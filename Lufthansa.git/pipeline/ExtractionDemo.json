@@ -38,7 +38,7 @@
 					"source": {
 						"type": "AzureSqlSource",
 						"sqlReaderQuery": {
-							"value": "select id, \nsourcetype,\njson_value(sourcedetails,'$.ServerAddress') as servername,\njson_value(sourcedetails,'$.databaseName') as databasename,\njson_value(sourcedetails,'$.schema') as [schema],\njson_value(sourcedetails,'$.username') as username,\njson_value(sourcedetails,'$.password') as [password],\njson_value(sourcedetails,'$.tablename') as tablename,\njson_value(pipelinedetails,'$.datafactoryName') as datafactoryName,\njson_value(pipelinedetails,'$.pipelineName') as pipelineName,\njson_value(destinationdetails,'$.destination1') as destination1,\nlastmodifieddate,\nfolderpath,\nupdatecolumn,\nRunId,\nmerge_stmt from metatable\n",
+							"value": "select id, \nsourcetype,\njson_value(sourcedetails,'$.ServerAddress') as servername,\njson_value(sourcedetails,'$.databaseName') as databasename,\njson_value(sourcedetails,'$.schema') as [schema],\njson_value(sourcedetails,'$.username') as username,\njson_value(sourcedetails,'$.password') as [password],\njson_value(sourcedetails,'$.tablename') as tablename,\njson_value(pipelinedetails,'$.datafactoryName') as datafactoryName,\njson_value(pipelinedetails,'$.pipelineName') as pipelineName,\njson_value(destinationdetails,'$.destination1') as destination1,\nisnull(lastmodifieddate,'01-01-1900') as lastmodifieddate,\nfolderpath,\nupdatecolumn,\nRunId,\nlastmodifieddate_column,\nmerge_stmt from metatable\n",
 							"type": "Expression"
 						},
 						"queryTimeout": "02:00:00",
@@ -85,7 +85,7 @@
 								"source": {
 									"type": "AzureSqlSource",
 									"sqlReaderQuery": {
-										"value": "@concat('select * from ' , item().schema , '.' , item().tablename , ' where ', item().updatecolumn , '> cast(''' , item().lastmodifieddate , ''' as datetime(100))')\n",
+										"value": "@concat('select * from ' , item().schema , '.' , item().tablename , ' where ', item().lastmodifieddate_column , '> cast(''' , item().lastmodifieddate , ''' as datetime)')\n",
 										"type": "Expression"
 									},
 									"queryTimeout": "02:00:00",

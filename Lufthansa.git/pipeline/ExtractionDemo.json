@@ -85,7 +85,7 @@
 								"source": {
 									"type": "AzureSqlSource",
 									"sqlReaderQuery": {
-										"value": "@concat('select * from ' , item().schema , '.' , item().tablename , ' where ', item().updatecolumn , '> cast(''' , item().lastmodifieddate , ''' as varchar(100))'\n",
+										"value": "@concat('select * from ' , item().schema , '.' , item().tablename , ' where ', item().updatecolumn , '> cast(''' , item().lastmodifieddate , ''' as datetime(100))')\n",
 										"type": "Expression"
 									},
 									"queryTimeout": "02:00:00",

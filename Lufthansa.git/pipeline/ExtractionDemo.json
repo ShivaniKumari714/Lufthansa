@@ -9,13 +9,133 @@
 				"userProperties": [],
 				"typeProperties": {
 					"variableName": "SysDateTime",
-					"value": ""
+					"value": {
+						"value": "@formatDateTime(utcnow(),'yyyy/MM/dd/hh/mm/ss')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Lookup1",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Set variable1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "select id, \nsourcetype,\njson_value(sourcedetails,'$.ServerAddress') as servername,\njson_value(sourcedetails,'$.databaseName') as databasename,\njson_value(sourcedetails,'$.schema') as [schema],\njson_value(sourcedetails,'$.username') as username,\njson_value(sourcedetails,'$.password') as [password],\njson_value(sourcedetails,'$.tablename') as tablename,\njson_value(pipelinedetails,'$.datafactoryName') as datafactoryName,\njson_value(pipelinedetails,'$.pipelineName') as pipelineName,\njson_value(destinationdetails,'$.destination1') as destination1,\nlastmodifieddate,\nfolderpath,\nupdatecolumn,\nRunId,\nmerge_stmt from metatable\n",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "AzureSqlsource1",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "ForEach1",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Lookup1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@variables('Lookup1').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Copy data1",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "@concat('select * from ' , item().schema , '.' , item().tablename , ' where ', item().updatecolumn , '> cast(''' , item().lastmodifieddate , ''' as varchar(100))'\n",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "ParquetWriteSettings"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "AzureSqlTable1",
+									"type": "DatasetReference",
+									"parameters": {
+										"tablename": {
+											"value": "@item().tablename",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "Parquet1",
+									"type": "DatasetReference"
+								}
+							]
+						}
+					]
 				}
 			}
 		],
 		"variables": {
 			"SysDateTime": {
-				"type": "String"
+				"type": "String",
+				"defaultValue": " @formatDateTime(utcnow(),'yyyy/MM/dd/hh/mm/ss')"
 			}
 		},
 		"annotations": []

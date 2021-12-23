@@ -1,0 +1,23 @@
+{
+	"name": "F_PN_INVENTORY_HISTORY",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureDataLakeStorage1",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "ALPINE"
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": "targetdb/f_pn_inventory_history",
+				"fileSystem": "dwh"
+			},
+			"compressionCodec": "snappy"
+		},
+		"schema": []
+	}
+}

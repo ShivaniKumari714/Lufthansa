@@ -1,0 +1,93 @@
+{
+	"name": "TALSYStoBlob",
+	"properties": {
+		"activities": [
+			{
+				"name": "ForEach1",
+				"type": "ForEach",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@pipeline().parameters.cw_items",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "TALSYStoBlob",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "OracleSource",
+									"oracleReaderQuery": {
+										"value": "@{item().query} @{if(or(pipeline().parameters.is_first_load, empty(item().where_clause)), '', replace(replace(item().where_clause, 'PRUNE_DAYS', pipeline().parameters.prune_days), 'CURRENT_DATETIME', pipeline().parameters.queryTimestamp))}",
+										"type": "Expression"
+									},
+									"partitionOption": "None",
+									"queryTimeout": "02:00:00"
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									}
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "TALSYS",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "LandingStorage",
+									"type": "DatasetReference",
+									"parameters": {
+										"filename": {
+											"value": "@concat(item().target_filename, '.parquet')",
+											"type": "Expression"
+										},
+										"folder": {
+											"value": "@concat(item().landing_folder, '/', item().target_filename)",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"cw_items": {
+				"type": "array"
+			},
+			"prune_days": {
+				"type": "string"
+			},
+			"queryTimestamp": {
+				"type": "string"
+			},
+			"is_first_load": {
+				"type": "bool"
+			}
+		},
+		"folder": {
+			"name": "ALPINE"
+		},
+		"annotations": [],
+		"lastPublishTime": "2020-10-09T05:45:10Z"
+	}
+}

@@ -1,0 +1,130 @@
+{
+	"name": "TriggerGuzzleJob",
+	"properties": {
+		"activities": [
+			{
+				"name": "TriggerGuzzleJob",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": {
+						"value": "https://guzzleprd-ltp.southeastasia.cloudapp.azure.com:9090/api/execute/job",
+						"type": "Expression"
+					},
+					"method": "PUT",
+					"headers": {
+						"Content-Type": "application/json"
+					},
+					"body": {
+						"value": "{\n    \"name\": \"@{pipeline().parameters.job_name}\",\n     \"jobParameters\": {\n        \"business_date\": \"@{formatDateTime(pipeline().TriggerTime, 'yyyy-MM-dd HH:mm:ss')}\",\n        \"environment\": \"@{pipeline().parameters.environment}\",\n        \"queryTimestamp\": \"@{pipeline().parameters.queryTimestamp}\" ,\n        \"date_column\": \"@{pipeline().parameters.date_column}\",\n        \"prune_days\": \"@{pipeline().parameters.prune_days}\"\n}}",
+						"type": "Expression"
+					},
+					"authentication": {
+						"type": "Basic",
+						"username": "admin",
+						"password": {
+							"type": "SecureString",
+							"value": "**********"
+						}
+					}
+				}
+			},
+			{
+				"name": "WaitUntilCompleted",
+				"type": "Until",
+				"dependsOn": [
+					{
+						"activity": "TriggerGuzzleJob",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(contains(activity('GetStatus').output, 'firstRow'),\nnot(or(equals(activity('GetStatus').output.firstRow.status, 'PENDING'),\nequals(activity('GetStatus').output.firstRow.status, 'RUNNING'))))",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Wait15seconds",
+							"type": "Wait",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"waitTimeInSeconds": 15
+							}
+						},
+						{
+							"name": "GetStatus",
+							"type": "Lookup",
+							"dependsOn": [
+								{
+									"activity": "Wait15seconds",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "SELECT\n  status\nFROM [dbo].[job_info]\nWHERE job_instance_id = @{activity('TriggerGuzzleJob').output.jobInstanceId}",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "JobInfo",
+									"type": "DatasetReference"
+								}
+							}
+						}
+					],
+					"timeout": "7.00:00:00"
+				}
+			}
+		],
+		"parameters": {
+			"job_name": {
+				"type": "string"
+			},
+			"queryTimestamp": {
+				"type": "string"
+			},
+			"environment": {
+				"type": "string"
+			},
+			"date_column": {
+				"type": "string"
+			},
+			"prune_days": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "ALPINE"
+		},
+		"annotations": [],
+		"lastPublishTime": "2020-10-09T05:45:10Z"
+	}
+}

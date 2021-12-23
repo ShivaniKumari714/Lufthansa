@@ -1,0 +1,59 @@
+{
+	"name": "PBIRefreshAndEmail",
+	"properties": {
+		"activities": [
+			{
+				"name": "PBIRefreshAndEmail",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": {
+						"value": "https://prod-18.southeastasia.logic.azure.com:443/workflows/90cf7cd92d3e4fc2bd87fd2dbc8cd41c/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=F_c799BW2ydew7K4aGCd4mosbW6KJ-x44Jp8TGnZLio",
+						"type": "Expression"
+					},
+					"method": "POST",
+					"headers": {
+						"Content-Type": "application/json"
+					},
+					"body": {
+						"value": "{\n\"pbi_datasets\": @{pipeline().parameters.pbi_datasets},\n\"email_info\": {\n\"to\": \"@{pipeline().parameters.email_to}\",\n\"client_name\": \"LTP\",\n\"status\": \"@{pipeline().parameters.status}\",\n\"environment\":\n\"@{pipeline().parameters.environment}\",\n\"message\": \"@{pipeline().parameters.message}\",\n\"start_time\": \"@{pipeline().parameters.start_time}\",\n\"end_time\": \"@{utcnow('dd/MM/yyyy hh:mm:ss tt')}\",\n\"elapsed_time\": \"\",\n\"project_name\": \"Alpine_non-SAP DataSource\",\n\"timezone\": \"[GMT]\",\n\"target\": \"apineadlsstorage\"\n}\n}",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"email_to": {
+				"type": "string"
+			},
+			"message": {
+				"type": "string"
+			},
+			"status": {
+				"type": "string"
+			},
+			"start_time": {
+				"type": "string"
+			},
+			"environment": {
+				"type": "string"
+			},
+			"pbi_datasets": {
+				"type": "array"
+			}
+		},
+		"folder": {
+			"name": "ALPINE"
+		},
+		"annotations": [],
+		"lastPublishTime": "2020-10-09T05:45:10Z"
+	}
+}

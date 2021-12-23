@@ -1,0 +1,15 @@
+{
+	"name": "ODB",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Oracledummy",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "ALPINE"
+		},
+		"annotations": [],
+		"type": "OracleTable",
+		"schema": []
+	}
+}

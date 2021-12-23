@@ -1,0 +1,106 @@
+{
+	"name": "DataLaketoSQLServer",
+	"properties": {
+		"activities": [
+			{
+				"name": "If Condition1",
+				"type": "IfCondition",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@pipeline().parameters.is_first_load",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Trigger f_pn_inventory_history_2_job",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "TriggerGuzzleJob",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"job_name": "f_pn_inventory_history2",
+									"queryTimestamp": {
+										"value": "'@{pipeline().parameters.queryTimestamp}'",
+										"type": "Expression"
+									},
+									"environment": "LTPEnv",
+									"date_column": "created_date",
+									"prune_days": {
+										"value": "@pipeline().parameters.prune_days",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "Copy data1",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "ParquetSource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"wildcardFileName": "*.parquet"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"preCopyScript": "truncate table [dbo].[f_pn_inventory_history]",
+									"disableMetricsCollection": false
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "F_PN_INVENTORY_HISTORY",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "F_PN_INVENTORY_HISTORY_TABLE",
+									"type": "DatasetReference"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"is_first_load": {
+				"type": "bool"
+			},
+			"queryTimestamp": {
+				"type": "string"
+			},
+			"prune_days": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "ALPINE"
+		},
+		"annotations": [],
+		"lastPublishTime": "2020-10-09T05:45:11Z"
+	}
+}

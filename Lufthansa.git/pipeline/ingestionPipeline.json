@@ -1,0 +1,445 @@
+{
+	"name": "ingestionPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "LookupLandingTableConfig",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobStorageReadSettings",
+							"recursive": true
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"dataset": {
+						"referenceName": "Configuration",
+						"type": "DatasetReference",
+						"parameters": {
+							"config_filename": "landing_tables.csv"
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "isNotLoaded",
+				"type": "Filter",
+				"dependsOn": [
+					{
+						"activity": "LookupLandingTableConfig",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('LookupLandingTableConfig').output.value",
+						"type": "Expression"
+					},
+					"condition": {
+						"value": "@equals(item().is_loaded,'No')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "FilterAOLayoverDBTables",
+				"type": "Filter",
+				"dependsOn": [
+					{
+						"activity": "isNotLoaded",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('isNotLoaded').output.value",
+						"type": "Expression"
+					},
+					"condition": {
+						"value": "@equals(item().source_schema,'AOLAYOVERDB')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "FilteriHRDBTables",
+				"type": "Filter",
+				"dependsOn": [
+					{
+						"activity": "isNotLoaded",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('isNotLoaded').output.value",
+						"type": "Expression"
+					},
+					"condition": {
+						"value": "@equals(item().source_schema,'iHRDB')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "FilterManhoursDBTables",
+				"type": "Filter",
+				"dependsOn": [
+					{
+						"activity": "isNotLoaded",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('isNotLoaded').output.value",
+						"type": "Expression"
+					},
+					"condition": {
+						"value": "@equals(item().source_schema,'manhours')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "FilterODBTables",
+				"type": "Filter",
+				"dependsOn": [
+					{
+						"activity": "isNotLoaded",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('isNotLoaded').output.value",
+						"type": "Expression"
+					},
+					"condition": {
+						"value": "@equals(item().source_schema,'ODB')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "FilterTALSYSTables",
+				"type": "Filter",
+				"dependsOn": [
+					{
+						"activity": "isNotLoaded",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('isNotLoaded').output.value",
+						"type": "Expression"
+					},
+					"condition": {
+						"value": "@equals(item().source_schema,'TALSYS')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "invokeAOLayoverDBcopy",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "FilterAOLayoverDBTables",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "AOLayoverDBToBlob",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"cw_items": {
+							"value": "@activity('FilterAOLayoverDBTables').output.value",
+							"type": "Expression"
+						},
+						"prune_days": {
+							"value": "@pipeline().parameters.prune_days",
+							"type": "Expression"
+						},
+						"queryTimestamp": {
+							"value": "@pipeline().parameters.queryTimestamp",
+							"type": "Expression"
+						},
+						"is_first_load": {
+							"value": "@pipeline().parameters.is_first_load",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "invokeiHRDBcopy",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "FilteriHRDBTables",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "iHRDBToBlob",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"cw_items": {
+							"value": "@activity('FilteriHRDBTables').output.value",
+							"type": "Expression"
+						},
+						"prune_days": {
+							"value": "@pipeline().parameters.prune_days",
+							"type": "Expression"
+						},
+						"queryTimestamp": {
+							"value": "@pipeline().parameters.queryTimestamp",
+							"type": "Expression"
+						},
+						"is_first_load": {
+							"value": "@pipeline().parameters.is_first_load",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "invokeManhoursDBcopy",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "FilterManhoursDBTables",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "ManhoursDBtoBlob",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"cw_items": {
+							"value": "@activity('FilterManhoursDBTables').output.value",
+							"type": "Expression"
+						},
+						"prune_days": {
+							"value": "@pipeline().parameters.prune_days",
+							"type": "Expression"
+						},
+						"queryTimestamp": {
+							"value": "@pipeline().parameters.queryTimestamp",
+							"type": "Expression"
+						},
+						"is_first_load": {
+							"value": "@pipeline().parameters.is_first_load",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "invokeODBcopy",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "FilterODBTables",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "ODBtoBlob",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"cw_items": {
+							"value": "@activity('FilterODBTables').output.value",
+							"type": "Expression"
+						},
+						"prune_days": {
+							"value": "@pipeline().parameters.prune_days",
+							"type": "Expression"
+						},
+						"queryTimestamp": {
+							"value": "@pipeline().parameters.queryTimestamp",
+							"type": "Expression"
+						},
+						"is_first_load": {
+							"value": "@pipeline().parameters.is_first_load",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "invokeTALSYScopy",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "FilterTALSYSTables",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "TALSYStoBlob",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"cw_items": {
+							"value": "@activity('FilterTALSYSTables').output.value",
+							"type": "Expression"
+						},
+						"prune_days": {
+							"value": "@pipeline().parameters.prune_days",
+							"type": "Expression"
+						},
+						"queryTimestamp": {
+							"value": "@pipeline().parameters.queryTimestamp",
+							"type": "Expression"
+						},
+						"is_first_load": {
+							"value": "@pipeline().parameters.is_first_load",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "FilterTURNINTables",
+				"type": "Filter",
+				"dependsOn": [
+					{
+						"activity": "isNotLoaded",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('isNotLoaded').output.value",
+						"type": "Expression"
+					},
+					"condition": {
+						"value": "@equals(item().source_schema,'TURNIN')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "invokeTURNINcopy",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "FilterTURNINTables",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "TURNINtoBlob",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"cw_items": {
+							"value": "@activity('FilterTURNINTables').output.value",
+							"type": "Expression"
+						},
+						"prune_days": {
+							"value": "@pipeline().parameters.prune_days",
+							"type": "Expression"
+						},
+						"queryTimestamp": {
+							"value": "@pipeline().parameters.queryTimestamp",
+							"type": "Expression"
+						},
+						"is_first_load": {
+							"value": "@pipeline().parameters.is_first_load",
+							"type": "Expression"
+						}
+					}
+				}
+			}
+		],
+		"parameters": {
+			"queryTimestamp": {
+				"type": "string"
+			},
+			"is_first_load": {
+				"type": "bool"
+			},
+			"prune_days": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "ALPINE"
+		},
+		"annotations": [],
+		"lastPublishTime": "2021-06-18T06:30:50Z"
+	}
+}

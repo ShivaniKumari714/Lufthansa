@@ -1,0 +1,412 @@
+{
+	"name": "EndtoEndPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "queryTimestamp",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "queryTimestamp",
+					"value": {
+						"value": "@formatDateTime(pipeline().TriggerTime, 'yyyy-MM-dd HH:mm:ss')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "OnPremiseToADLS",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "queryTimestamp",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "ingestionPipeline",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"queryTimestamp": {
+							"value": "@variables('queryTimestamp')",
+							"type": "Expression"
+						},
+						"is_first_load": {
+							"value": "@pipeline().parameters.is_first_load",
+							"type": "Expression"
+						},
+						"prune_days": {
+							"value": "@pipeline().parameters.prune_days",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "DatabackupPipeline",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "OnPremiseToADLS",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "DataBackupPipeline",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "DownloadfromSharepoint",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "OnPremiseToADLS",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Shared/Guzzle/Sharepoint blob"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureDatabricks1",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "CreateExternalTablesifNotExist",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "DownloadfromSharepoint",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Shared/Guzzle/CreateExternalTablesIfNotExist"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureDatabricks1",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "RunGuzzleJobGroups",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "CreateExternalTablesifNotExist",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "RunJobGroups",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"queryTimeStamp": {
+							"value": "@variables('queryTimestamp')",
+							"type": "Expression"
+						},
+						"is_first_load": {
+							"value": "@pipeline().parameters.is_first_load",
+							"type": "Expression"
+						},
+						"prune_days": {
+							"value": "@pipeline().parameters.prune_days",
+							"type": "Expression"
+						},
+						"email_to": {
+							"value": "@pipeline().parameters.email_to",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "f_pn_inventory_history_to_adls",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "RunGuzzleJobGroups",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "DataLaketoSQLServer",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"is_first_load": {
+							"value": "@pipeline().parameters.is_first_load",
+							"type": "Expression"
+						},
+						"queryTimestamp": {
+							"value": "@variables('queryTimestamp')",
+							"type": "Expression"
+						},
+						"prune_days": {
+							"value": "@pipeline().parameters.prune_days",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "PBIRefreshAndEmail",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "f_pn_inventory_history_to_adls",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "PBIRefreshAndEmail",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"email_to": {
+							"value": "@pipeline().parameters.email_to",
+							"type": "Expression"
+						},
+						"message": {
+							"value": "---",
+							"type": "Expression"
+						},
+						"status": "SUCCESS",
+						"start_time": {
+							"value": "@formatDateTime(pipeline().TriggerTime, 'dd/MM/yyyy hh:mm:ss tt')",
+							"type": "Expression"
+						},
+						"environment": "PROD",
+						"pbi_datasets": {
+							"value": "[\n  {\n  \"datasetID\": \"bf2d2391-9de8-446a-9e82-d200efdc0147\",\n  \"groupID\": \"2e559720-eeff-4eb2-b59d-26f101046aee\"\n  \n  },\n  {\n  \"datasetID\": \"fe043e32-3913-4502-9f5f-2bec1eca1ecc\",\n  \"groupID\": \"2e559720-eeff-4eb2-b59d-26f101046aee\"\n  \n  },\n  {\n  \"datasetID\": \"4dde646c-af04-444c-8f25-d77eecb610a5\",\n  \"groupID\": \"2e559720-eeff-4eb2-b59d-26f101046aee\"\n  \n  }\n  ]",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "ErrorInIngestion",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "OnPremiseToADLS",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "PBIRefreshAndEmail",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"email_to": {
+							"value": "@pipeline().parameters.email_to",
+							"type": "Expression"
+						},
+						"message": {
+							"value": "Error while ingesting data from Onpremise",
+							"type": "Expression"
+						},
+						"status": "ERROR",
+						"start_time": {
+							"value": "@formatDateTime(pipeline().TriggerTime, 'dd/MM/yyyy hh:mm:ss tt')",
+							"type": "Expression"
+						},
+						"environment": "PROD",
+						"pbi_datasets": "[]"
+					}
+				}
+			},
+			{
+				"name": "ErrorinSharepointDownload",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "DownloadfromSharepoint",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "PBIRefreshAndEmail",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"email_to": {
+							"value": "@pipeline().parameters.email_to",
+							"type": "Expression"
+						},
+						"message": {
+							"value": "Error while ingesting data from Sharepoint",
+							"type": "Expression"
+						},
+						"status": "ERROR",
+						"start_time": {
+							"value": "@formatDateTime(pipeline().TriggerTime, 'dd/MM/yyyy hh:mm:ss tt')",
+							"type": "Expression"
+						},
+						"environment": "PROD",
+						"pbi_datasets": "[]"
+					}
+				}
+			},
+			{
+				"name": "ErrorWhileCreatingExternalTables",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "CreateExternalTablesifNotExist",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "PBIRefreshAndEmail",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"email_to": {
+							"value": "@pipeline().parameters.email_to",
+							"type": "Expression"
+						},
+						"message": {
+							"value": "Error while creating external tables on landing data",
+							"type": "Expression"
+						},
+						"status": "ERROR",
+						"start_time": {
+							"value": "@formatDateTime(pipeline().TriggerTime, 'dd/MM/yyyy hh:mm:ss tt')",
+							"type": "Expression"
+						},
+						"environment": "PROD",
+						"pbi_datasets": "[]"
+					}
+				}
+			},
+			{
+				"name": "ErrorOnCopyingDataToSQLServer",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "f_pn_inventory_history_to_adls",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "PBIRefreshAndEmail",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"email_to": {
+							"value": "@pipeline().parameters.email_to",
+							"type": "Expression"
+						},
+						"message": {
+							"value": "Error on copying data to sql server",
+							"type": "Expression"
+						},
+						"status": "ERROR",
+						"start_time": {
+							"value": "@formatDateTime(pipeline().TriggerTime, 'dd/MM/yyyy hh:mm:ss tt')",
+							"type": "Expression"
+						},
+						"environment": "PROD",
+						"pbi_datasets": "[]"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"is_first_load": {
+				"type": "bool",
+				"defaultValue": false
+			},
+			"email_to": {
+				"type": "string",
+				"defaultValue": "darille.cabal@lht-philippines.com"
+			},
+			"prune_days": {
+				"type": "string",
+				"defaultValue": "180"
+			}
+		},
+		"variables": {
+			"queryTimestamp": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "ALPINE"
+		},
+		"annotations": [],
+		"lastPublishTime": "2020-10-09T05:45:14Z"
+	}
+}

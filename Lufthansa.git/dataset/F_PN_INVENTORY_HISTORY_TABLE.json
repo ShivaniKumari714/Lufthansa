@@ -1,0 +1,459 @@
+{
+	"name": "F_PN_INVENTORY_HISTORY_TABLE",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "ALPINE"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "transaction_no",
+				"type": "varchar"
+			},
+			{
+				"name": "transaction_type",
+				"type": "varchar"
+			},
+			{
+				"name": "batch",
+				"type": "varchar"
+			},
+			{
+				"name": "goods_rcvd_batch",
+				"type": "varchar"
+			},
+			{
+				"name": "pn",
+				"type": "varchar"
+			},
+			{
+				"name": "sn",
+				"type": "varchar"
+			},
+			{
+				"name": "nla",
+				"type": "varchar"
+			},
+			{
+				"name": "nha_pn",
+				"type": "varchar"
+			},
+			{
+				"name": "nha_sn",
+				"type": "varchar"
+			},
+			{
+				"name": "qty",
+				"type": "varchar"
+			},
+			{
+				"name": "order_type",
+				"type": "varchar"
+			},
+			{
+				"name": "order_no",
+				"type": "varchar"
+			},
+			{
+				"name": "order_line",
+				"type": "varchar"
+			},
+			{
+				"name": "location",
+				"type": "varchar"
+			},
+			{
+				"name": "control",
+				"type": "varchar"
+			},
+			{
+				"name": "bin",
+				"type": "varchar"
+			},
+			{
+				"name": "condition",
+				"type": "varchar"
+			},
+			{
+				"name": "wo",
+				"type": "varchar"
+			},
+			{
+				"name": "task_card",
+				"type": "varchar"
+			},
+			{
+				"name": "ac",
+				"type": "varchar"
+			},
+			{
+				"name": "unit_cost",
+				"type": "varchar"
+			},
+			{
+				"name": "currency",
+				"type": "varchar"
+			},
+			{
+				"name": "currency_exchange_rate",
+				"type": "varchar"
+			},
+			{
+				"name": "vendor",
+				"type": "varchar"
+			},
+			{
+				"name": "qty_return_stock",
+				"type": "varchar"
+			},
+			{
+				"name": "gl_company",
+				"type": "varchar"
+			},
+			{
+				"name": "gl_expenditure",
+				"type": "varchar"
+			},
+			{
+				"name": "gl",
+				"type": "varchar"
+			},
+			{
+				"name": "gl_cost_center",
+				"type": "varchar"
+			},
+			{
+				"name": "status",
+				"type": "varchar"
+			},
+			{
+				"name": "awb",
+				"type": "varchar"
+			},
+			{
+				"name": "ship_via",
+				"type": "varchar"
+			},
+			{
+				"name": "issued_to",
+				"type": "varchar"
+			},
+			{
+				"name": "notes",
+				"type": "varchar"
+			},
+			{
+				"name": "created_by",
+				"type": "varchar"
+			},
+			{
+				"name": "created_date",
+				"type": "datetime2",
+				"scale": 7
+			},
+			{
+				"name": "modified_by",
+				"type": "varchar"
+			},
+			{
+				"name": "modified_date",
+				"type": "datetime2",
+				"scale": 7
+			},
+			{
+				"name": "to_location",
+				"type": "varchar"
+			},
+			{
+				"name": "to_bin",
+				"type": "varchar"
+			},
+			{
+				"name": "custom_duty_code",
+				"type": "varchar"
+			},
+			{
+				"name": "req_acknowledgement",
+				"type": "varchar"
+			},
+			{
+				"name": "req_acknowledgement_by",
+				"type": "varchar"
+			},
+			{
+				"name": "req_acknowledgement_date",
+				"type": "datetime2",
+				"scale": 7
+			},
+			{
+				"name": "unit_sell_override",
+				"type": "varchar"
+			},
+			{
+				"name": "unit_sell",
+				"type": "varchar"
+			},
+			{
+				"name": "reference",
+				"type": "varchar"
+			},
+			{
+				"name": "invoice",
+				"type": "varchar"
+			},
+			{
+				"name": "scrap_code",
+				"type": "varchar"
+			},
+			{
+				"name": "secondary_cost",
+				"type": "varchar"
+			},
+			{
+				"name": "secondary_currency_exchange",
+				"type": "varchar"
+			},
+			{
+				"name": "custom_duty_document",
+				"type": "varchar"
+			},
+			{
+				"name": "owner",
+				"type": "varchar"
+			},
+			{
+				"name": "pass_financial_closing",
+				"type": "varchar"
+			},
+			{
+				"name": "technical_record_date",
+				"type": "datetime2",
+				"scale": 7
+			},
+			{
+				"name": "issued_to_employee",
+				"type": "varchar"
+			},
+			{
+				"name": "interface_transfer_by",
+				"type": "varchar"
+			},
+			{
+				"name": "interface_transfer_date",
+				"type": "datetime2",
+				"scale": 7
+			},
+			{
+				"name": "remove_installed_date",
+				"type": "datetime2",
+				"scale": 7
+			},
+			{
+				"name": "remove_installed_position",
+				"type": "varchar"
+			},
+			{
+				"name": "removal_installed_description",
+				"type": "varchar"
+			},
+			{
+				"name": "ship_via_account",
+				"type": "varchar"
+			},
+			{
+				"name": "ship_via_remarks",
+				"type": "varchar"
+			},
+			{
+				"name": "ri_pn_control_reset",
+				"type": "varchar"
+			},
+			{
+				"name": "tag_no",
+				"type": "varchar"
+			},
+			{
+				"name": "tag_by",
+				"type": "varchar"
+			},
+			{
+				"name": "tag_date",
+				"type": "datetime2",
+				"scale": 7
+			},
+			{
+				"name": "issue_to_employee",
+				"type": "varchar"
+			},
+			{
+				"name": "task_card_pn",
+				"type": "varchar"
+			},
+			{
+				"name": "task_card_sn",
+				"type": "varchar"
+			},
+			{
+				"name": "pre_receipt",
+				"type": "varchar"
+			},
+			{
+				"name": "ri_interface_flag",
+				"type": "varchar"
+			},
+			{
+				"name": "interface_trnsfr_finance_brzl",
+				"type": "datetime2",
+				"scale": 7
+			},
+			{
+				"name": "iface_baxter_dissue_xfer_date",
+				"type": "datetime2",
+				"scale": 7
+			},
+			{
+				"name": "iface_baxter_stmtd_xfer_date",
+				"type": "datetime2",
+				"scale": 7
+			},
+			{
+				"name": "iface_baxter_dinst_xfer_date",
+				"type": "datetime2",
+				"scale": 7
+			},
+			{
+				"name": "iface_baxter_dremove_xfer_date",
+				"type": "datetime2",
+				"scale": 7
+			},
+			{
+				"name": "rtv_reopen_inv_interface_flag",
+				"type": "varchar"
+			},
+			{
+				"name": "requisition_line",
+				"type": "varchar"
+			},
+			{
+				"name": "adjustment_code",
+				"type": "varchar"
+			},
+			{
+				"name": "document_no",
+				"type": "varchar"
+			},
+			{
+				"name": "blob_no",
+				"type": "varchar"
+			},
+			{
+				"name": "requisition",
+				"type": "varchar"
+			},
+			{
+				"name": "created_by_costing_adjust",
+				"type": "varchar"
+			},
+			{
+				"name": "defect_type",
+				"type": "varchar"
+			},
+			{
+				"name": "defect",
+				"type": "varchar"
+			},
+			{
+				"name": "defect_item",
+				"type": "varchar"
+			},
+			{
+				"name": "form_1_notes",
+				"type": "varchar"
+			},
+			{
+				"name": "nla_position",
+				"type": "varchar"
+			},
+			{
+				"name": "signed_pdf",
+				"type": "varchar"
+			},
+			{
+				"name": "general_pdf",
+				"type": "varchar"
+			},
+			{
+				"name": "reopen_order",
+				"type": "varchar"
+			},
+			{
+				"name": "tool_calibration_no",
+				"type": "varchar"
+			},
+			{
+				"name": "tax_incentive",
+				"type": "varchar"
+			},
+			{
+				"name": "tax_incentive_nbr",
+				"type": "varchar"
+			},
+			{
+				"name": "employee_cost_center",
+				"type": "varchar"
+			},
+			{
+				"name": "rmv_ins_pn",
+				"type": "varchar"
+			},
+			{
+				"name": "rmv_ins_sn",
+				"type": "varchar"
+			},
+			{
+				"name": "vendor_lot",
+				"type": "varchar"
+			},
+			{
+				"name": "us_number",
+				"type": "varchar"
+			},
+			{
+				"name": "remove_as_serviceable",
+				"type": "varchar"
+			},
+			{
+				"name": "issued_by",
+				"type": "varchar"
+			},
+			{
+				"name": "borrowed_date",
+				"type": "datetime2",
+				"scale": 7
+			},
+			{
+				"name": "notes_text",
+				"type": "varchar"
+			},
+			{
+				"name": "etl_insert_date",
+				"type": "datetime2",
+				"scale": 7
+			},
+			{
+				"name": "etl_update_date",
+				"type": "datetime2",
+				"scale": 7
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "f_pn_inventory_history"
+		}
+	}
+}

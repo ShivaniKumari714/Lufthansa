@@ -1,0 +1,51 @@
+{
+	"name": "Configuration",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Dummy",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"config_filename": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "ALPINE"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"fileName": {
+					"value": "@dataset().config_filename",
+					"type": "Expression"
+				},
+				"container": "configs"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": [
+			{
+				"name": "PARAMETER",
+				"type": "String"
+			},
+			{
+				"name": "VALUE",
+				"type": "String"
+			},
+			{
+				"name": "UPDATED_BY",
+				"type": "String"
+			},
+			{
+				"name": "UPDATED_DATE",
+				"type": "String"
+			}
+		]
+	}
+}

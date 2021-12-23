@@ -1,0 +1,85 @@
+{
+	"name": "LogResults",
+	"properties": {
+		"activities": [
+			{
+				"name": "GetJobInfos",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "SELECT\n  job_instance_id,\n  name,\n  module,\n  start_time,\n  parent_job_instance_id,\n  status,\n  message\nFROM [dbo].[job_info]\nWHERE parent_job_instance_id=@{pipeline().parameters.parentJobInstanceID}",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "JobInfo",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "logResults",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "GetJobInfos",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Shared/Guzzle/Logs",
+					"baseParameters": {
+						"logs": {
+							"value": "{\n\"triggerTime\": \"@{pipeline().parameters.triggerTime}\",\n\"logs\": @{activity('GetJobInfos').output.value},\n\"jobgroup\": \"@{pipeline().parameters.p_jobgroup}\"\n}",
+							"type": "Expression"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureDatabricks1",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"parameters": {
+			"triggerTime": {
+				"type": "string"
+			},
+			"parentJobInstanceID": {
+				"type": "string"
+			},
+			"p_jobgroup": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "ALPINE"
+		},
+		"annotations": [],
+		"lastPublishTime": "2021-06-09T11:40:48Z"
+	}
+}

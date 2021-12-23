@@ -1,0 +1,133 @@
+{
+	"name": "JobInfo",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "ALPINE"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "business_date",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "batch_id",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "job_instance_id",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "system",
+				"type": "varchar"
+			},
+			{
+				"name": "location",
+				"type": "varchar"
+			},
+			{
+				"name": "parent_job_instance_id",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "name",
+				"type": "varchar"
+			},
+			{
+				"name": "module",
+				"type": "varchar"
+			},
+			{
+				"name": "tag",
+				"type": "varchar"
+			},
+			{
+				"name": "start_time",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "end_time",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "status",
+				"type": "varchar"
+			},
+			{
+				"name": "message",
+				"type": "varchar"
+			},
+			{
+				"name": "raw_base_job_config",
+				"type": "text"
+			},
+			{
+				"name": "raw_job_config",
+				"type": "text"
+			},
+			{
+				"name": "processed_job_config",
+				"type": "text"
+			},
+			{
+				"name": "total_source_records",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "total_processed_records",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "total_records",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "invalid_records",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "inserted",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "updated",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "deleted",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "soft_deleted",
+				"type": "bigint",
+				"precision": 19
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "job_info"
+		}
+	}
+}

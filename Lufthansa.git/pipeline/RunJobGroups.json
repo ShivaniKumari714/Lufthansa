@@ -1,0 +1,295 @@
+{
+	"name": "RunJobGroups",
+	"properties": {
+		"activities": [
+			{
+				"name": "HRJobs",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "TriggerGuzzleJobGroup",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"mode": "default",
+						"sparkEnvName": {
+							"value": "@variables('spark-env-name')",
+							"type": "Expression"
+						},
+						"jobGroupName": "HR_JOBS",
+						"guzzleEnvName": "LTPEnv",
+						"queryTimeStamp": {
+							"value": "@pipeline().parameters.queryTimeStamp",
+							"type": "Expression"
+						},
+						"load": {
+							"value": "@if(pipeline().parameters.is_first_load, 'full', 'incremental')",
+							"type": "Expression"
+						},
+						"prune_days": {
+							"value": "@pipeline().parameters.prune_days",
+							"type": "Expression"
+						},
+						"email_to": {
+							"value": "@pipeline().parameters.email_to",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "InventoryJobs",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "HRJobs",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "TriggerGuzzleJobGroup",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"mode": "default",
+						"sparkEnvName": {
+							"value": "@variables('spark-env-name')",
+							"type": "Expression"
+						},
+						"jobGroupName": "INVENTORY_JOBS",
+						"guzzleEnvName": "LTPEnv",
+						"queryTimeStamp": {
+							"value": "@pipeline().parameters.queryTimeStamp",
+							"type": "Expression"
+						},
+						"load": {
+							"value": "@if(pipeline().parameters.is_first_load, 'full', 'incremental')",
+							"type": "Expression"
+						},
+						"prune_days": {
+							"value": "@pipeline().parameters.prune_days",
+							"type": "Expression"
+						},
+						"email_to": {
+							"value": "@pipeline().parameters.email_to",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "Production0",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "InventoryJobs",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "TriggerGuzzleJobGroup",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"mode": "default",
+						"sparkEnvName": {
+							"value": "@variables('spark-env-name')",
+							"type": "Expression"
+						},
+						"jobGroupName": "Production-Level0",
+						"guzzleEnvName": "LTPEnv",
+						"queryTimeStamp": {
+							"value": "@pipeline().parameters.queryTimeStamp",
+							"type": "Expression"
+						},
+						"load": {
+							"value": "@if(pipeline().parameters.is_first_load, 'full', 'incremental')",
+							"type": "Expression"
+						},
+						"prune_days": {
+							"value": "@pipeline().parameters.prune_days",
+							"type": "Expression"
+						},
+						"email_to": {
+							"value": "@pipeline().parameters.email_to",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "Production1",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Production0",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "TriggerGuzzleJobGroup",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"mode": "default",
+						"sparkEnvName": {
+							"value": "@variables('spark-env-name')",
+							"type": "Expression"
+						},
+						"jobGroupName": "Production-level1",
+						"guzzleEnvName": "LTPEnv",
+						"queryTimeStamp": {
+							"value": "@pipeline().parameters.queryTimeStamp",
+							"type": "Expression"
+						},
+						"load": {
+							"value": "@if(pipeline().parameters.is_first_load, 'full', 'incremental')",
+							"type": "Expression"
+						},
+						"prune_days": {
+							"value": "@pipeline().parameters.prune_days",
+							"type": "Expression"
+						},
+						"email_to": {
+							"value": "@pipeline().parameters.email_to",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "Production2",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Production1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "TriggerGuzzleJobGroup",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"mode": "default",
+						"sparkEnvName": {
+							"value": "@variables('spark-env-name')",
+							"type": "Expression"
+						},
+						"jobGroupName": "Production-level2",
+						"guzzleEnvName": "LTPEnv",
+						"queryTimeStamp": {
+							"value": "@pipeline().parameters.queryTimeStamp",
+							"type": "Expression"
+						},
+						"load": {
+							"value": "@if(pipeline().parameters.is_first_load, 'full', 'incremental')",
+							"type": "Expression"
+						},
+						"prune_days": {
+							"value": "@pipeline().parameters.prune_days",
+							"type": "Expression"
+						},
+						"email_to": {
+							"value": "@pipeline().parameters.email_to",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "ReconJobs",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Production2",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "TriggerGuzzleJobGroup",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"mode": "default",
+						"sparkEnvName": {
+							"value": "@variables('spark-env-name')",
+							"type": "Expression"
+						},
+						"jobGroupName": "Recons",
+						"guzzleEnvName": "LTPEnv",
+						"queryTimeStamp": {
+							"value": "@pipeline().parameters.queryTimeStamp",
+							"type": "Expression"
+						},
+						"load": {
+							"value": "@if(pipeline().parameters.is_first_load, 'full', 'incremental')",
+							"type": "Expression"
+						},
+						"prune_days": {
+							"value": "@pipeline().parameters.prune_days",
+							"type": "Expression"
+						},
+						"email_to": {
+							"value": "@pipeline().parameters.email_to",
+							"type": "Expression"
+						}
+					}
+				}
+			}
+		],
+		"parameters": {
+			"queryTimeStamp": {
+				"type": "string"
+			},
+			"is_first_load": {
+				"type": "bool"
+			},
+			"prune_days": {
+				"type": "string"
+			},
+			"email_to": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"spark-env-name": {
+				"type": "String",
+				"defaultValue": "databricks-job-cluster"
+			}
+		},
+		"folder": {
+			"name": "ALPINE"
+		},
+		"annotations": [],
+		"lastPublishTime": "2020-10-09T05:45:13Z"
+	}
+}

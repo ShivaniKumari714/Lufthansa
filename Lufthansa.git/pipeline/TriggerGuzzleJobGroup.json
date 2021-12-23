@@ -1,0 +1,481 @@
+{
+	"name": "TriggerGuzzleJobGroup",
+	"properties": {
+		"activities": [
+			{
+				"name": "TriggerTime",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "triggertime",
+					"value": {
+						"value": "@formatDateTime(pipeline().TriggerTime, 'yyyy-MM-dd HH:mm:ss')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "JobGroupsAPI",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "TriggerTime",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": {
+						"value": "https://guzzleprd-ltp.southeastasia.cloudapp.azure.com:9090/api/batches/run_job_group?mode=@{pipeline().parameters.mode}",
+						"type": "Expression"
+					},
+					"method": "POST",
+					"body": {
+						"value": "{\"business_date\":\"@{variables('triggertime')}\",\"guzzle.spark.name\":\"@{pipeline().parameters.sparkEnvName}\",\"job_group\":\"@{pipeline().parameters.jobGroupName}\",\"environment\":\"@{pipeline().parameters.guzzleEnvName}\", \"queryTimestamp\": \"from_unixtime(unix_timestamp('@{pipeline().parameters.queryTimestamp}', 'yyyy-MM-dd HH:mm:ss'))\", \"load\": \"@{pipeline().parameters.load}\", \"prune_days\": \"@{pipeline().parameters.prune_days}\"}",
+						"type": "Expression"
+					},
+					"disableCertValidation": true,
+					"authentication": {
+						"type": "Basic",
+						"username": "admin",
+						"password": {
+							"type": "SecureString",
+							"value": "**********"
+						}
+					}
+				}
+			},
+			{
+				"name": "WaitForJobStart",
+				"type": "Until",
+				"dependsOn": [
+					{
+						"activity": "JobGroupsAPI",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(contains(activity('GetMaxInstanceId').output.firstRow, 'jobInstanceId'), not(equals(activity('GetMaxInstanceId').output.firstRow.jobInstanceId, null)))",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Wait5Seconds",
+							"type": "Wait",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"waitTimeInSeconds": 5
+							}
+						},
+						{
+							"name": "GetMaxInstanceID",
+							"type": "Lookup",
+							"dependsOn": [
+								{
+									"activity": "Wait5Seconds",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "SELECT\n  CAST(MAX(job_instance_id) AS varchar) jobInstanceId\nFROM [dbo].[job_info]\nWHERE tag = 'job_group'\nAND business_date='@{variables('triggertime')}'",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "JobInfo",
+									"type": "DatasetReference"
+								}
+							}
+						}
+					],
+					"timeout": "00.00:01:00"
+				}
+			},
+			{
+				"name": "WaitForJobToComplete",
+				"type": "Until",
+				"dependsOn": [
+					{
+						"activity": "WaitForJobStart",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(contains(activity('GetStatus').output,\n'firstRow'),not(equals(activity('GetStatus').output.firstRow.status, 'RUNNING')))",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Wait15Seconds",
+							"type": "Wait",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"waitTimeInSeconds": 15
+							}
+						},
+						{
+							"name": "GetStatus",
+							"type": "Lookup",
+							"dependsOn": [
+								{
+									"activity": "Wait15Seconds",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "SELECT\n  status\nFROM [dbo].[job_info]\nWHERE job_instance_id=@{activity('GetMaxInstanceID').output.firstRow.jobInstanceID}",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "JobInfo",
+									"type": "DatasetReference"
+								}
+							}
+						}
+					],
+					"timeout": "7.00:00:00"
+				}
+			},
+			{
+				"name": "LogResults",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "WaitForJobToComplete",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "LogResults",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"triggerTime": {
+							"value": "@pipeline().parameters.queryTimeStamp",
+							"type": "Expression"
+						},
+						"parentJobInstanceID": {
+							"value": "@activity('GetMaxInstanceID').output.firstRow.jobInstanceID",
+							"type": "Expression"
+						},
+						"p_jobgroup": {
+							"value": "@pipeline().parameters.jobGroupName",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "RaiseExceptionIfJobFailed",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "LogResults",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "If Condition1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "status",
+					"value": {
+						"value": "@if(not(equals(activity('GetStatus').output.firstRow.status, 'SUCCESS')), 1, 'SUCCESS')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "If Condition1",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "WaitForJobToComplete",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@not(equals(activity('GetStatus').output.firstRow.status, 'SUCCESS'))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "GetFailedJobInfo",
+							"type": "Lookup",
+							"dependsOn": [
+								{
+									"activity": "WaitAMinute",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "select job_instance_id, (select parameter_value from dbo.job_info_param where 1=1 and parameter_name='job_status_url' and job_info_param.job_instance_id=job_info.job_instance_id) job_databricks_url, (select concat('https://alpinestorageaprod.blob.core.windows.net/guzzlehome/logs/',parameter_value,'?sp=rl&st=2020-08-04T08:36:15Z&se=2500-12-31T08:36:00Z&sv=2019-12-12&sr=c&sig=inlHmDzhrSqMEwwYTmg1v16AWGe%2Bj03hgKTTx2j2BZ8%3D') from dbo.job_info_param where 1=1 and parameter_name='log_file' and job_info_param.job_instance_id=job_info.job_instance_id) job_log_file from dbo.job_info where 1=1 and parent_job_instance_id='@{activity('GetMaxInstanceID').output.firstRow.jobInstanceID}' and status in ('FAILED','ABORTED') and tag not in ('workunit', 'publish') order by job_info.job_instance_id desc",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "JobInfo",
+									"type": "DatasetReference"
+								}
+							}
+						},
+						{
+							"name": "SendFailureEmailNotification",
+							"type": "ExecutePipeline",
+							"dependsOn": [
+								{
+									"activity": "Set jobLogFile",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "Set jobGroupLogFile",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "PBIRefreshAndEmail",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"email_to": {
+										"value": "@pipeline().parameters.email_to",
+										"type": "Expression"
+									},
+									"message": {
+										"value": "Error occurred while running Job Group <strong>@{pipeline().parameters.jobGroupName}</strong>. @{if(not(empty(variables('jobLogFile'))), concat('Click <a href=''', variables('jobLogFile'), '''>here</a> to download log file of failed job.'), '')}",
+										"type": "Expression"
+									},
+									"status": {
+										"value": "@activity('GetStatus').output.firstRow.status",
+										"type": "Expression"
+									},
+									"start_time": {
+										"value": "@pipeline().TriggerTime",
+										"type": "Expression"
+									},
+									"environment": "PROD",
+									"pbi_datasets": "[]"
+								}
+							}
+						},
+						{
+							"name": "WaitAMinute",
+							"type": "Wait",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"waitTimeInSeconds": 60
+							}
+						},
+						{
+							"name": "GetFailedJobGroupInfo",
+							"type": "Lookup",
+							"dependsOn": [
+								{
+									"activity": "Set jobLogFile",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "select job_instance_id, (select concat('https://alpinestorageaprod.blob.core.windows.net/guzzlehome/logs/',parameter_value,'?sp=rl&st=2020-08-04T08:36:15Z&se=2500-12-31T08:36:00Z&sv=2019-12-12&sr=c&sig=inlHmDzhrSqMEwwYTmg1v16AWGe%2Bj03hgKTTx2j2BZ8%3D') from dbo.job_info_param where 1=1 and parameter_name='log_file' and job_info_param.job_instance_id='@{activity('GetMaxInstanceID').output.firstRow.jobInstanceID}') job_log_file from dbo.job_info where 1=1 and status in ('FAILED','ABORTED') and tag not in ('workunit', 'publish') order by job_info.job_instance_id desc",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "JobInfo",
+									"type": "DatasetReference"
+								},
+								"firstRowOnly": true
+							}
+						},
+						{
+							"name": "Set jobLogFile",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "GetFailedJobInfo",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "jobLogFile",
+								"value": {
+									"value": "@activity('GetFailedJobInfo').output.firstRow['job_log_file']",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Set jobGroupLogFile",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "GetFailedJobGroupInfo",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "jobLogFile",
+								"value": {
+									"value": "@activity('GetFailedJobGroupInfo').output.firstRow['job_log_file']",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"mode": {
+				"type": "string"
+			},
+			"sparkEnvName": {
+				"type": "string"
+			},
+			"jobGroupName": {
+				"type": "string"
+			},
+			"guzzleEnvName": {
+				"type": "string"
+			},
+			"queryTimeStamp": {
+				"type": "string"
+			},
+			"load": {
+				"type": "string"
+			},
+			"prune_days": {
+				"type": "string"
+			},
+			"email_to": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"triggertime": {
+				"type": "String"
+			},
+			"status": {
+				"type": "String"
+			},
+			"jobLogFile": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "ALPINE"
+		},
+		"annotations": [],
+		"lastPublishTime": "2021-06-09T11:40:49Z"
+	}
+}

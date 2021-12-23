@@ -1,0 +1,9 @@
+{
+	"name": "lufthansa-adf",
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "cd671ddc-7762-4774-9a90-b82ce5cd799f",
+		"tenantId": "102530d5-b1f1-4140-b910-ea69ef1e7cb2"
+	}
+}

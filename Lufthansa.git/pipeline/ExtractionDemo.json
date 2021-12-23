@@ -1,0 +1,23 @@
+{
+	"name": "ExtractionDemo",
+	"properties": {
+		"activities": [
+			{
+				"name": "Set variable1",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "SysDateTime",
+					"value": ""
+				}
+			}
+		],
+		"variables": {
+			"SysDateTime": {
+				"type": "String"
+			}
+		},
+		"annotations": []
+	}
+}

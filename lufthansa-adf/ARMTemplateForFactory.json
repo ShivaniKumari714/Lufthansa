@@ -1,0 +1,4163 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "lufthansa-adf"
+		},
+		"AzureDataLakeStorage1_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'AzureDataLakeStorage1'"
+		},
+		"AzureDatabricks1_accessToken": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accessToken' of 'AzureDatabricks1'"
+		},
+		"AzureSqlDatabase1_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'AzureSqlDatabase1'"
+		},
+		"Dummy_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'Dummy'"
+		},
+		"Oracledummy_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'Oracledummy'"
+		},
+		"SqlServer1_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SqlServer1'"
+		},
+		"AzureSqlDatabase2_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'AzureSqlDatabase2'"
+		},
+		"AzureSqlDatabase3_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'AzureSqlDatabase3'"
+		},
+		"ADLSGen2Destination_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'ADLSGen2Destination'"
+		},
+		"AzureDataLakeStorage1_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://lufthansagen2.dfs.core.windows.net"
+		},
+		"ADLSGen2Destination_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://adlsgen2demo002.dfs.core.windows.net"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/ExtractionDemo')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Set variable1",
+						"type": "SetVariable",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "SysDateTime",
+							"value": {
+								"value": "@formatDateTime(utcnow(),'yyyy/MM/dd/hh/mm/ss')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Lookup1",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "Set variable1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "select id, \nsourcetype,\njson_value(sourcedetails,'$.ServerAddress') as servername,\njson_value(sourcedetails,'$.databaseName') as databasename,\njson_value(sourcedetails,'$.schema') as [schema],\njson_value(sourcedetails,'$.username') as username,\njson_value(sourcedetails,'$.password') as [password],\njson_value(sourcedetails,'$.tablename') as tablename,\njson_value(pipelinedetails,'$.datafactoryName') as datafactoryName,\njson_value(pipelinedetails,'$.pipelineName') as pipelineName,\njson_value(destinationdetails,'$.destination1') as destination1,\nisnull(lastmodifieddate,'01-01-1900') as lastmodifieddate,\nfolderpath,\nupdatecolumn,\nRunId,\nlastmodifieddate_column,\nmerge_stmt from metatable\n",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AzureSqlsource1",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Lookup1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lookup1').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copy data1",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "AzureSqlSource",
+											"sqlReaderQuery": {
+												"value": "@concat('select * from ' , item().schema , '.' , item().tablename , ' where ', item().lastmodifieddate_column , '> cast(''' , item().lastmodifieddate , ''' as datetime)')\n",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "ParquetSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "ParquetWriteSettings"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "AzureSqlTable1",
+											"type": "DatasetReference",
+											"parameters": {
+												"tablename": {
+													"value": "@item().tablename",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "Parquet1",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"variables": {
+					"SysDateTime": {
+						"type": "String",
+						"defaultValue": " @formatDateTime(utcnow(),'yyyy/MM/dd/hh/mm/ss')"
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/AzureSqlsource1')]",
+				"[concat(variables('factoryId'), '/datasets/AzureSqlTable1')]",
+				"[concat(variables('factoryId'), '/datasets/Parquet1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureDataLakeStorage1')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('AzureDataLakeStorage1_properties_typeProperties_url')]",
+					"accountKey": {
+						"type": "SecureString",
+						"value": "[parameters('AzureDataLakeStorage1_accountKey')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureDatabricks1')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureDatabricks",
+				"typeProperties": {
+					"domain": "https://adb-4030156704576580.0.azuredatabricks.net",
+					"accessToken": {
+						"type": "SecureString",
+						"value": "[parameters('AzureDatabricks1_accessToken')]"
+					},
+					"existingClusterId": "1223-061934-2oepbkop"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlDatabase1')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": "[parameters('AzureSqlDatabase1_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Dummy')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('Dummy_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Oracledummy')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "Oracle",
+				"typeProperties": {
+					"connectionString": "[parameters('Oracledummy_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SqlServer1')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "SqlServer",
+				"typeProperties": {
+					"connectionString": "[parameters('SqlServer1_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Configuration')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Dummy",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"config_filename": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": {
+							"value": "@dataset().config_filename",
+							"type": "Expression"
+						},
+						"container": "configs"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "PARAMETER",
+						"type": "String"
+					},
+					{
+						"name": "VALUE",
+						"type": "String"
+					},
+					{
+						"name": "UPDATED_BY",
+						"type": "String"
+					},
+					{
+						"name": "UPDATED_DATE",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Dummy')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LandingDatabackup')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureDataLakeStorage1",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"container": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileSystem": {
+							"value": "@dataset().container",
+							"type": "Expression"
+						}
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorage1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/F_PN_INVENTORY_HISTORY')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureDataLakeStorage1",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": "targetdb/f_pn_inventory_history",
+						"fileSystem": "dwh"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorage1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/F_PN_INVENTORY_HISTORY_TABLE')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "transaction_no",
+						"type": "varchar"
+					},
+					{
+						"name": "transaction_type",
+						"type": "varchar"
+					},
+					{
+						"name": "batch",
+						"type": "varchar"
+					},
+					{
+						"name": "goods_rcvd_batch",
+						"type": "varchar"
+					},
+					{
+						"name": "pn",
+						"type": "varchar"
+					},
+					{
+						"name": "sn",
+						"type": "varchar"
+					},
+					{
+						"name": "nla",
+						"type": "varchar"
+					},
+					{
+						"name": "nha_pn",
+						"type": "varchar"
+					},
+					{
+						"name": "nha_sn",
+						"type": "varchar"
+					},
+					{
+						"name": "qty",
+						"type": "varchar"
+					},
+					{
+						"name": "order_type",
+						"type": "varchar"
+					},
+					{
+						"name": "order_no",
+						"type": "varchar"
+					},
+					{
+						"name": "order_line",
+						"type": "varchar"
+					},
+					{
+						"name": "location",
+						"type": "varchar"
+					},
+					{
+						"name": "control",
+						"type": "varchar"
+					},
+					{
+						"name": "bin",
+						"type": "varchar"
+					},
+					{
+						"name": "condition",
+						"type": "varchar"
+					},
+					{
+						"name": "wo",
+						"type": "varchar"
+					},
+					{
+						"name": "task_card",
+						"type": "varchar"
+					},
+					{
+						"name": "ac",
+						"type": "varchar"
+					},
+					{
+						"name": "unit_cost",
+						"type": "varchar"
+					},
+					{
+						"name": "currency",
+						"type": "varchar"
+					},
+					{
+						"name": "currency_exchange_rate",
+						"type": "varchar"
+					},
+					{
+						"name": "vendor",
+						"type": "varchar"
+					},
+					{
+						"name": "qty_return_stock",
+						"type": "varchar"
+					},
+					{
+						"name": "gl_company",
+						"type": "varchar"
+					},
+					{
+						"name": "gl_expenditure",
+						"type": "varchar"
+					},
+					{
+						"name": "gl",
+						"type": "varchar"
+					},
+					{
+						"name": "gl_cost_center",
+						"type": "varchar"
+					},
+					{
+						"name": "status",
+						"type": "varchar"
+					},
+					{
+						"name": "awb",
+						"type": "varchar"
+					},
+					{
+						"name": "ship_via",
+						"type": "varchar"
+					},
+					{
+						"name": "issued_to",
+						"type": "varchar"
+					},
+					{
+						"name": "notes",
+						"type": "varchar"
+					},
+					{
+						"name": "created_by",
+						"type": "varchar"
+					},
+					{
+						"name": "created_date",
+						"type": "datetime2",
+						"scale": 7
+					},
+					{
+						"name": "modified_by",
+						"type": "varchar"
+					},
+					{
+						"name": "modified_date",
+						"type": "datetime2",
+						"scale": 7
+					},
+					{
+						"name": "to_location",
+						"type": "varchar"
+					},
+					{
+						"name": "to_bin",
+						"type": "varchar"
+					},
+					{
+						"name": "custom_duty_code",
+						"type": "varchar"
+					},
+					{
+						"name": "req_acknowledgement",
+						"type": "varchar"
+					},
+					{
+						"name": "req_acknowledgement_by",
+						"type": "varchar"
+					},
+					{
+						"name": "req_acknowledgement_date",
+						"type": "datetime2",
+						"scale": 7
+					},
+					{
+						"name": "unit_sell_override",
+						"type": "varchar"
+					},
+					{
+						"name": "unit_sell",
+						"type": "varchar"
+					},
+					{
+						"name": "reference",
+						"type": "varchar"
+					},
+					{
+						"name": "invoice",
+						"type": "varchar"
+					},
+					{
+						"name": "scrap_code",
+						"type": "varchar"
+					},
+					{
+						"name": "secondary_cost",
+						"type": "varchar"
+					},
+					{
+						"name": "secondary_currency_exchange",
+						"type": "varchar"
+					},
+					{
+						"name": "custom_duty_document",
+						"type": "varchar"
+					},
+					{
+						"name": "owner",
+						"type": "varchar"
+					},
+					{
+						"name": "pass_financial_closing",
+						"type": "varchar"
+					},
+					{
+						"name": "technical_record_date",
+						"type": "datetime2",
+						"scale": 7
+					},
+					{
+						"name": "issued_to_employee",
+						"type": "varchar"
+					},
+					{
+						"name": "interface_transfer_by",
+						"type": "varchar"
+					},
+					{
+						"name": "interface_transfer_date",
+						"type": "datetime2",
+						"scale": 7
+					},
+					{
+						"name": "remove_installed_date",
+						"type": "datetime2",
+						"scale": 7
+					},
+					{
+						"name": "remove_installed_position",
+						"type": "varchar"
+					},
+					{
+						"name": "removal_installed_description",
+						"type": "varchar"
+					},
+					{
+						"name": "ship_via_account",
+						"type": "varchar"
+					},
+					{
+						"name": "ship_via_remarks",
+						"type": "varchar"
+					},
+					{
+						"name": "ri_pn_control_reset",
+						"type": "varchar"
+					},
+					{
+						"name": "tag_no",
+						"type": "varchar"
+					},
+					{
+						"name": "tag_by",
+						"type": "varchar"
+					},
+					{
+						"name": "tag_date",
+						"type": "datetime2",
+						"scale": 7
+					},
+					{
+						"name": "issue_to_employee",
+						"type": "varchar"
+					},
+					{
+						"name": "task_card_pn",
+						"type": "varchar"
+					},
+					{
+						"name": "task_card_sn",
+						"type": "varchar"
+					},
+					{
+						"name": "pre_receipt",
+						"type": "varchar"
+					},
+					{
+						"name": "ri_interface_flag",
+						"type": "varchar"
+					},
+					{
+						"name": "interface_trnsfr_finance_brzl",
+						"type": "datetime2",
+						"scale": 7
+					},
+					{
+						"name": "iface_baxter_dissue_xfer_date",
+						"type": "datetime2",
+						"scale": 7
+					},
+					{
+						"name": "iface_baxter_stmtd_xfer_date",
+						"type": "datetime2",
+						"scale": 7
+					},
+					{
+						"name": "iface_baxter_dinst_xfer_date",
+						"type": "datetime2",
+						"scale": 7
+					},
+					{
+						"name": "iface_baxter_dremove_xfer_date",
+						"type": "datetime2",
+						"scale": 7
+					},
+					{
+						"name": "rtv_reopen_inv_interface_flag",
+						"type": "varchar"
+					},
+					{
+						"name": "requisition_line",
+						"type": "varchar"
+					},
+					{
+						"name": "adjustment_code",
+						"type": "varchar"
+					},
+					{
+						"name": "document_no",
+						"type": "varchar"
+					},
+					{
+						"name": "blob_no",
+						"type": "varchar"
+					},
+					{
+						"name": "requisition",
+						"type": "varchar"
+					},
+					{
+						"name": "created_by_costing_adjust",
+						"type": "varchar"
+					},
+					{
+						"name": "defect_type",
+						"type": "varchar"
+					},
+					{
+						"name": "defect",
+						"type": "varchar"
+					},
+					{
+						"name": "defect_item",
+						"type": "varchar"
+					},
+					{
+						"name": "form_1_notes",
+						"type": "varchar"
+					},
+					{
+						"name": "nla_position",
+						"type": "varchar"
+					},
+					{
+						"name": "signed_pdf",
+						"type": "varchar"
+					},
+					{
+						"name": "general_pdf",
+						"type": "varchar"
+					},
+					{
+						"name": "reopen_order",
+						"type": "varchar"
+					},
+					{
+						"name": "tool_calibration_no",
+						"type": "varchar"
+					},
+					{
+						"name": "tax_incentive",
+						"type": "varchar"
+					},
+					{
+						"name": "tax_incentive_nbr",
+						"type": "varchar"
+					},
+					{
+						"name": "employee_cost_center",
+						"type": "varchar"
+					},
+					{
+						"name": "rmv_ins_pn",
+						"type": "varchar"
+					},
+					{
+						"name": "rmv_ins_sn",
+						"type": "varchar"
+					},
+					{
+						"name": "vendor_lot",
+						"type": "varchar"
+					},
+					{
+						"name": "us_number",
+						"type": "varchar"
+					},
+					{
+						"name": "remove_as_serviceable",
+						"type": "varchar"
+					},
+					{
+						"name": "issued_by",
+						"type": "varchar"
+					},
+					{
+						"name": "borrowed_date",
+						"type": "datetime2",
+						"scale": 7
+					},
+					{
+						"name": "notes_text",
+						"type": "varchar"
+					},
+					{
+						"name": "etl_insert_date",
+						"type": "datetime2",
+						"scale": 7
+					},
+					{
+						"name": "etl_update_date",
+						"type": "datetime2",
+						"scale": 7
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "f_pn_inventory_history"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AOLayoverSqlDb')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"type": "SqlServerTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SqlServer1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LandingStorage')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureDataLakeStorage1",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"filename": {
+						"type": "string"
+					},
+					"folder": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().filename",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().folder",
+							"type": "Expression"
+						},
+						"fileSystem": "dwh"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorage1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/IHRDBSQLServerAzure')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ManhoursSQLServerAzure')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ODB')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Oracledummy",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"type": "OracleTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Oracledummy')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/TALSYS')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Oracledummy",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"type": "OracleTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Oracledummy')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/TURNIN_DS')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Oracledummy",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"type": "OracleTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Oracledummy')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/JobInfo')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "business_date",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "batch_id",
+						"type": "bigint",
+						"precision": 19
+					},
+					{
+						"name": "job_instance_id",
+						"type": "bigint",
+						"precision": 19
+					},
+					{
+						"name": "system",
+						"type": "varchar"
+					},
+					{
+						"name": "location",
+						"type": "varchar"
+					},
+					{
+						"name": "parent_job_instance_id",
+						"type": "bigint",
+						"precision": 19
+					},
+					{
+						"name": "name",
+						"type": "varchar"
+					},
+					{
+						"name": "module",
+						"type": "varchar"
+					},
+					{
+						"name": "tag",
+						"type": "varchar"
+					},
+					{
+						"name": "start_time",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "end_time",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "status",
+						"type": "varchar"
+					},
+					{
+						"name": "message",
+						"type": "varchar"
+					},
+					{
+						"name": "raw_base_job_config",
+						"type": "text"
+					},
+					{
+						"name": "raw_job_config",
+						"type": "text"
+					},
+					{
+						"name": "processed_job_config",
+						"type": "text"
+					},
+					{
+						"name": "total_source_records",
+						"type": "bigint",
+						"precision": 19
+					},
+					{
+						"name": "total_processed_records",
+						"type": "bigint",
+						"precision": 19
+					},
+					{
+						"name": "total_records",
+						"type": "bigint",
+						"precision": 19
+					},
+					{
+						"name": "invalid_records",
+						"type": "bigint",
+						"precision": 19
+					},
+					{
+						"name": "inserted",
+						"type": "bigint",
+						"precision": 19
+					},
+					{
+						"name": "updated",
+						"type": "bigint",
+						"precision": 19
+					},
+					{
+						"name": "deleted",
+						"type": "bigint",
+						"precision": 19
+					},
+					{
+						"name": "soft_deleted",
+						"type": "bigint",
+						"precision": 19
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "job_info"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/EndtoEndPipeline')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "queryTimestamp",
+						"type": "SetVariable",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "queryTimestamp",
+							"value": {
+								"value": "@formatDateTime(pipeline().TriggerTime, 'yyyy-MM-dd HH:mm:ss')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "OnPremiseToADLS",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "queryTimestamp",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "ingestionPipeline",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"queryTimestamp": {
+									"value": "@variables('queryTimestamp')",
+									"type": "Expression"
+								},
+								"is_first_load": {
+									"value": "@pipeline().parameters.is_first_load",
+									"type": "Expression"
+								},
+								"prune_days": {
+									"value": "@pipeline().parameters.prune_days",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "DatabackupPipeline",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "OnPremiseToADLS",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "DataBackupPipeline",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "DownloadfromSharepoint",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "OnPremiseToADLS",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Shared/Guzzle/Sharepoint blob"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureDatabricks1",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "CreateExternalTablesifNotExist",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "DownloadfromSharepoint",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Shared/Guzzle/CreateExternalTablesIfNotExist"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureDatabricks1",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "RunGuzzleJobGroups",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "CreateExternalTablesifNotExist",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "RunJobGroups",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"queryTimeStamp": {
+									"value": "@variables('queryTimestamp')",
+									"type": "Expression"
+								},
+								"is_first_load": {
+									"value": "@pipeline().parameters.is_first_load",
+									"type": "Expression"
+								},
+								"prune_days": {
+									"value": "@pipeline().parameters.prune_days",
+									"type": "Expression"
+								},
+								"email_to": {
+									"value": "@pipeline().parameters.email_to",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "f_pn_inventory_history_to_adls",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "RunGuzzleJobGroups",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "DataLaketoSQLServer",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"is_first_load": {
+									"value": "@pipeline().parameters.is_first_load",
+									"type": "Expression"
+								},
+								"queryTimestamp": {
+									"value": "@variables('queryTimestamp')",
+									"type": "Expression"
+								},
+								"prune_days": {
+									"value": "@pipeline().parameters.prune_days",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "PBIRefreshAndEmail",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "f_pn_inventory_history_to_adls",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "PBIRefreshAndEmail",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"email_to": {
+									"value": "@pipeline().parameters.email_to",
+									"type": "Expression"
+								},
+								"message": {
+									"value": "---",
+									"type": "Expression"
+								},
+								"status": "SUCCESS",
+								"start_time": {
+									"value": "@formatDateTime(pipeline().TriggerTime, 'dd/MM/yyyy hh:mm:ss tt')",
+									"type": "Expression"
+								},
+								"environment": "PROD",
+								"pbi_datasets": {
+									"value": "[[\n  {\n  \"datasetID\": \"bf2d2391-9de8-446a-9e82-d200efdc0147\",\n  \"groupID\": \"2e559720-eeff-4eb2-b59d-26f101046aee\"\n  \n  },\n  {\n  \"datasetID\": \"fe043e32-3913-4502-9f5f-2bec1eca1ecc\",\n  \"groupID\": \"2e559720-eeff-4eb2-b59d-26f101046aee\"\n  \n  },\n  {\n  \"datasetID\": \"4dde646c-af04-444c-8f25-d77eecb610a5\",\n  \"groupID\": \"2e559720-eeff-4eb2-b59d-26f101046aee\"\n  \n  }\n  ]",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "ErrorInIngestion",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "OnPremiseToADLS",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "PBIRefreshAndEmail",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"email_to": {
+									"value": "@pipeline().parameters.email_to",
+									"type": "Expression"
+								},
+								"message": {
+									"value": "Error while ingesting data from Onpremise",
+									"type": "Expression"
+								},
+								"status": "ERROR",
+								"start_time": {
+									"value": "@formatDateTime(pipeline().TriggerTime, 'dd/MM/yyyy hh:mm:ss tt')",
+									"type": "Expression"
+								},
+								"environment": "PROD",
+								"pbi_datasets": "[[]"
+							}
+						}
+					},
+					{
+						"name": "ErrorinSharepointDownload",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "DownloadfromSharepoint",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "PBIRefreshAndEmail",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"email_to": {
+									"value": "@pipeline().parameters.email_to",
+									"type": "Expression"
+								},
+								"message": {
+									"value": "Error while ingesting data from Sharepoint",
+									"type": "Expression"
+								},
+								"status": "ERROR",
+								"start_time": {
+									"value": "@formatDateTime(pipeline().TriggerTime, 'dd/MM/yyyy hh:mm:ss tt')",
+									"type": "Expression"
+								},
+								"environment": "PROD",
+								"pbi_datasets": "[[]"
+							}
+						}
+					},
+					{
+						"name": "ErrorWhileCreatingExternalTables",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "CreateExternalTablesifNotExist",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "PBIRefreshAndEmail",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"email_to": {
+									"value": "@pipeline().parameters.email_to",
+									"type": "Expression"
+								},
+								"message": {
+									"value": "Error while creating external tables on landing data",
+									"type": "Expression"
+								},
+								"status": "ERROR",
+								"start_time": {
+									"value": "@formatDateTime(pipeline().TriggerTime, 'dd/MM/yyyy hh:mm:ss tt')",
+									"type": "Expression"
+								},
+								"environment": "PROD",
+								"pbi_datasets": "[[]"
+							}
+						}
+					},
+					{
+						"name": "ErrorOnCopyingDataToSQLServer",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "f_pn_inventory_history_to_adls",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "PBIRefreshAndEmail",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"email_to": {
+									"value": "@pipeline().parameters.email_to",
+									"type": "Expression"
+								},
+								"message": {
+									"value": "Error on copying data to sql server",
+									"type": "Expression"
+								},
+								"status": "ERROR",
+								"start_time": {
+									"value": "@formatDateTime(pipeline().TriggerTime, 'dd/MM/yyyy hh:mm:ss tt')",
+									"type": "Expression"
+								},
+								"environment": "PROD",
+								"pbi_datasets": "[[]"
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"is_first_load": {
+						"type": "bool",
+						"defaultValue": false
+					},
+					"email_to": {
+						"type": "string",
+						"defaultValue": "darille.cabal@lht-philippines.com"
+					},
+					"prune_days": {
+						"type": "string",
+						"defaultValue": "180"
+					}
+				},
+				"variables": {
+					"queryTimestamp": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-10-09T05:45:14Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/ingestionPipeline')]",
+				"[concat(variables('factoryId'), '/pipelines/DataBackupPipeline')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureDatabricks1')]",
+				"[concat(variables('factoryId'), '/pipelines/RunJobGroups')]",
+				"[concat(variables('factoryId'), '/pipelines/DataLaketoSQLServer')]",
+				"[concat(variables('factoryId'), '/pipelines/PBIRefreshAndEmail')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ingestionPipeline')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "LookupLandingTableConfig",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"dataset": {
+								"referenceName": "Configuration",
+								"type": "DatasetReference",
+								"parameters": {
+									"config_filename": "landing_tables.csv"
+								}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "isNotLoaded",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "LookupLandingTableConfig",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('LookupLandingTableConfig').output.value",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@equals(item().is_loaded,'No')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "FilterAOLayoverDBTables",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "isNotLoaded",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('isNotLoaded').output.value",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@equals(item().source_schema,'AOLAYOVERDB')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "FilteriHRDBTables",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "isNotLoaded",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('isNotLoaded').output.value",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@equals(item().source_schema,'iHRDB')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "FilterManhoursDBTables",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "isNotLoaded",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('isNotLoaded').output.value",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@equals(item().source_schema,'manhours')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "FilterODBTables",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "isNotLoaded",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('isNotLoaded').output.value",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@equals(item().source_schema,'ODB')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "FilterTALSYSTables",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "isNotLoaded",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('isNotLoaded').output.value",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@equals(item().source_schema,'TALSYS')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "invokeAOLayoverDBcopy",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "FilterAOLayoverDBTables",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "AOLayoverDBToBlob",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"cw_items": {
+									"value": "@activity('FilterAOLayoverDBTables').output.value",
+									"type": "Expression"
+								},
+								"prune_days": {
+									"value": "@pipeline().parameters.prune_days",
+									"type": "Expression"
+								},
+								"queryTimestamp": {
+									"value": "@pipeline().parameters.queryTimestamp",
+									"type": "Expression"
+								},
+								"is_first_load": {
+									"value": "@pipeline().parameters.is_first_load",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "invokeiHRDBcopy",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "FilteriHRDBTables",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "iHRDBToBlob",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"cw_items": {
+									"value": "@activity('FilteriHRDBTables').output.value",
+									"type": "Expression"
+								},
+								"prune_days": {
+									"value": "@pipeline().parameters.prune_days",
+									"type": "Expression"
+								},
+								"queryTimestamp": {
+									"value": "@pipeline().parameters.queryTimestamp",
+									"type": "Expression"
+								},
+								"is_first_load": {
+									"value": "@pipeline().parameters.is_first_load",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "invokeManhoursDBcopy",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "FilterManhoursDBTables",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "ManhoursDBtoBlob",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"cw_items": {
+									"value": "@activity('FilterManhoursDBTables').output.value",
+									"type": "Expression"
+								},
+								"prune_days": {
+									"value": "@pipeline().parameters.prune_days",
+									"type": "Expression"
+								},
+								"queryTimestamp": {
+									"value": "@pipeline().parameters.queryTimestamp",
+									"type": "Expression"
+								},
+								"is_first_load": {
+									"value": "@pipeline().parameters.is_first_load",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "invokeODBcopy",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "FilterODBTables",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "ODBtoBlob",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"cw_items": {
+									"value": "@activity('FilterODBTables').output.value",
+									"type": "Expression"
+								},
+								"prune_days": {
+									"value": "@pipeline().parameters.prune_days",
+									"type": "Expression"
+								},
+								"queryTimestamp": {
+									"value": "@pipeline().parameters.queryTimestamp",
+									"type": "Expression"
+								},
+								"is_first_load": {
+									"value": "@pipeline().parameters.is_first_load",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "invokeTALSYScopy",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "FilterTALSYSTables",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "TALSYStoBlob",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"cw_items": {
+									"value": "@activity('FilterTALSYSTables').output.value",
+									"type": "Expression"
+								},
+								"prune_days": {
+									"value": "@pipeline().parameters.prune_days",
+									"type": "Expression"
+								},
+								"queryTimestamp": {
+									"value": "@pipeline().parameters.queryTimestamp",
+									"type": "Expression"
+								},
+								"is_first_load": {
+									"value": "@pipeline().parameters.is_first_load",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "FilterTURNINTables",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "isNotLoaded",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('isNotLoaded').output.value",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@equals(item().source_schema,'TURNIN')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "invokeTURNINcopy",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "FilterTURNINTables",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "TURNINtoBlob",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"cw_items": {
+									"value": "@activity('FilterTURNINTables').output.value",
+									"type": "Expression"
+								},
+								"prune_days": {
+									"value": "@pipeline().parameters.prune_days",
+									"type": "Expression"
+								},
+								"queryTimestamp": {
+									"value": "@pipeline().parameters.queryTimestamp",
+									"type": "Expression"
+								},
+								"is_first_load": {
+									"value": "@pipeline().parameters.is_first_load",
+									"type": "Expression"
+								}
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"queryTimestamp": {
+						"type": "string"
+					},
+					"is_first_load": {
+						"type": "bool"
+					},
+					"prune_days": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"lastPublishTime": "2021-06-18T06:30:50Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/Configuration')]",
+				"[concat(variables('factoryId'), '/pipelines/AOLayoverDBToBlob')]",
+				"[concat(variables('factoryId'), '/pipelines/iHRDBToBlob')]",
+				"[concat(variables('factoryId'), '/pipelines/ManhoursDBtoBlob')]",
+				"[concat(variables('factoryId'), '/pipelines/ODBtoBlob')]",
+				"[concat(variables('factoryId'), '/pipelines/TALSYStoBlob')]",
+				"[concat(variables('factoryId'), '/pipelines/TURNINtoBlob')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DataBackupPipeline')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@variables('foldersToCopy')",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copy data2",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "ParquetSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true,
+												"wildcardFileName": "*.parquet"
+											}
+										},
+										"sink": {
+											"type": "ParquetSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "ParquetWriteSettings"
+											}
+										},
+										"enableStaging": false
+									},
+									"inputs": [
+										{
+											"referenceName": "LandingDatabackup",
+											"type": "DatasetReference",
+											"parameters": {
+												"container": {
+													"value": "dwh/@{item()}",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "LandingDatabackup",
+											"type": "DatasetReference",
+											"parameters": {
+												"container": {
+													"value": "@concat('databackup/', formatDateTime(pipeline().TriggerTime, 'dd-MM-yyyy'), '/', item())",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"variables": {
+					"foldersToCopy": {
+						"type": "Array",
+						"defaultValue": [
+							"aolayoverdb",
+							"ihrdb_full",
+							"ihrdb_inc",
+							"odb_full",
+							"odb_inc",
+							"manhours_full",
+							"talsys_full",
+							"talsys_inc"
+						]
+					}
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-10-09T05:45:10Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/LandingDatabackup')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/RunJobGroups')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "HRJobs",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "TriggerGuzzleJobGroup",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"mode": "default",
+								"sparkEnvName": {
+									"value": "@variables('spark-env-name')",
+									"type": "Expression"
+								},
+								"jobGroupName": "HR_JOBS",
+								"guzzleEnvName": "LTPEnv",
+								"queryTimeStamp": {
+									"value": "@pipeline().parameters.queryTimeStamp",
+									"type": "Expression"
+								},
+								"load": {
+									"value": "@if(pipeline().parameters.is_first_load, 'full', 'incremental')",
+									"type": "Expression"
+								},
+								"prune_days": {
+									"value": "@pipeline().parameters.prune_days",
+									"type": "Expression"
+								},
+								"email_to": {
+									"value": "@pipeline().parameters.email_to",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "InventoryJobs",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "HRJobs",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "TriggerGuzzleJobGroup",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"mode": "default",
+								"sparkEnvName": {
+									"value": "@variables('spark-env-name')",
+									"type": "Expression"
+								},
+								"jobGroupName": "INVENTORY_JOBS",
+								"guzzleEnvName": "LTPEnv",
+								"queryTimeStamp": {
+									"value": "@pipeline().parameters.queryTimeStamp",
+									"type": "Expression"
+								},
+								"load": {
+									"value": "@if(pipeline().parameters.is_first_load, 'full', 'incremental')",
+									"type": "Expression"
+								},
+								"prune_days": {
+									"value": "@pipeline().parameters.prune_days",
+									"type": "Expression"
+								},
+								"email_to": {
+									"value": "@pipeline().parameters.email_to",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "Production0",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "InventoryJobs",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "TriggerGuzzleJobGroup",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"mode": "default",
+								"sparkEnvName": {
+									"value": "@variables('spark-env-name')",
+									"type": "Expression"
+								},
+								"jobGroupName": "Production-Level0",
+								"guzzleEnvName": "LTPEnv",
+								"queryTimeStamp": {
+									"value": "@pipeline().parameters.queryTimeStamp",
+									"type": "Expression"
+								},
+								"load": {
+									"value": "@if(pipeline().parameters.is_first_load, 'full', 'incremental')",
+									"type": "Expression"
+								},
+								"prune_days": {
+									"value": "@pipeline().parameters.prune_days",
+									"type": "Expression"
+								},
+								"email_to": {
+									"value": "@pipeline().parameters.email_to",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "Production1",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "Production0",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "TriggerGuzzleJobGroup",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"mode": "default",
+								"sparkEnvName": {
+									"value": "@variables('spark-env-name')",
+									"type": "Expression"
+								},
+								"jobGroupName": "Production-level1",
+								"guzzleEnvName": "LTPEnv",
+								"queryTimeStamp": {
+									"value": "@pipeline().parameters.queryTimeStamp",
+									"type": "Expression"
+								},
+								"load": {
+									"value": "@if(pipeline().parameters.is_first_load, 'full', 'incremental')",
+									"type": "Expression"
+								},
+								"prune_days": {
+									"value": "@pipeline().parameters.prune_days",
+									"type": "Expression"
+								},
+								"email_to": {
+									"value": "@pipeline().parameters.email_to",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "Production2",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "Production1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "TriggerGuzzleJobGroup",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"mode": "default",
+								"sparkEnvName": {
+									"value": "@variables('spark-env-name')",
+									"type": "Expression"
+								},
+								"jobGroupName": "Production-level2",
+								"guzzleEnvName": "LTPEnv",
+								"queryTimeStamp": {
+									"value": "@pipeline().parameters.queryTimeStamp",
+									"type": "Expression"
+								},
+								"load": {
+									"value": "@if(pipeline().parameters.is_first_load, 'full', 'incremental')",
+									"type": "Expression"
+								},
+								"prune_days": {
+									"value": "@pipeline().parameters.prune_days",
+									"type": "Expression"
+								},
+								"email_to": {
+									"value": "@pipeline().parameters.email_to",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "ReconJobs",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "Production2",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "TriggerGuzzleJobGroup",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"mode": "default",
+								"sparkEnvName": {
+									"value": "@variables('spark-env-name')",
+									"type": "Expression"
+								},
+								"jobGroupName": "Recons",
+								"guzzleEnvName": "LTPEnv",
+								"queryTimeStamp": {
+									"value": "@pipeline().parameters.queryTimeStamp",
+									"type": "Expression"
+								},
+								"load": {
+									"value": "@if(pipeline().parameters.is_first_load, 'full', 'incremental')",
+									"type": "Expression"
+								},
+								"prune_days": {
+									"value": "@pipeline().parameters.prune_days",
+									"type": "Expression"
+								},
+								"email_to": {
+									"value": "@pipeline().parameters.email_to",
+									"type": "Expression"
+								}
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"queryTimeStamp": {
+						"type": "string"
+					},
+					"is_first_load": {
+						"type": "bool"
+					},
+					"prune_days": {
+						"type": "string"
+					},
+					"email_to": {
+						"type": "string"
+					}
+				},
+				"variables": {
+					"spark-env-name": {
+						"type": "String",
+						"defaultValue": "databricks-job-cluster"
+					}
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-10-09T05:45:13Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/TriggerGuzzleJobGroup')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DataLaketoSQLServer')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "If Condition1",
+						"type": "IfCondition",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@pipeline().parameters.is_first_load",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "Trigger f_pn_inventory_history_2_job",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "TriggerGuzzleJob",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"job_name": "f_pn_inventory_history2",
+											"queryTimestamp": {
+												"value": "'@{pipeline().parameters.queryTimestamp}'",
+												"type": "Expression"
+											},
+											"environment": "LTPEnv",
+											"date_column": "created_date",
+											"prune_days": {
+												"value": "@pipeline().parameters.prune_days",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "Copy data1",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "ParquetSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true,
+												"wildcardFileName": "*.parquet"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"preCopyScript": "truncate table [dbo].[f_pn_inventory_history]",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false
+									},
+									"inputs": [
+										{
+											"referenceName": "F_PN_INVENTORY_HISTORY",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "F_PN_INVENTORY_HISTORY_TABLE",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"is_first_load": {
+						"type": "bool"
+					},
+					"queryTimestamp": {
+						"type": "string"
+					},
+					"prune_days": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-10-09T05:45:11Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/TriggerGuzzleJob')]",
+				"[concat(variables('factoryId'), '/datasets/F_PN_INVENTORY_HISTORY')]",
+				"[concat(variables('factoryId'), '/datasets/F_PN_INVENTORY_HISTORY_TABLE')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PBIRefreshAndEmail')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "PBIRefreshAndEmail",
+						"type": "WebActivity",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"url": {
+								"value": "https://prod-18.southeastasia.logic.azure.com:443/workflows/90cf7cd92d3e4fc2bd87fd2dbc8cd41c/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=F_c799BW2ydew7K4aGCd4mosbW6KJ-x44Jp8TGnZLio",
+								"type": "Expression"
+							},
+							"method": "POST",
+							"headers": {
+								"Content-Type": "application/json"
+							},
+							"body": {
+								"value": "{\n\"pbi_datasets\": @{pipeline().parameters.pbi_datasets},\n\"email_info\": {\n\"to\": \"@{pipeline().parameters.email_to}\",\n\"client_name\": \"LTP\",\n\"status\": \"@{pipeline().parameters.status}\",\n\"environment\":\n\"@{pipeline().parameters.environment}\",\n\"message\": \"@{pipeline().parameters.message}\",\n\"start_time\": \"@{pipeline().parameters.start_time}\",\n\"end_time\": \"@{utcnow('dd/MM/yyyy hh:mm:ss tt')}\",\n\"elapsed_time\": \"\",\n\"project_name\": \"Alpine_non-SAP DataSource\",\n\"timezone\": \"[GMT]\",\n\"target\": \"apineadlsstorage\"\n}\n}",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"email_to": {
+						"type": "string"
+					},
+					"message": {
+						"type": "string"
+					},
+					"status": {
+						"type": "string"
+					},
+					"start_time": {
+						"type": "string"
+					},
+					"environment": {
+						"type": "string"
+					},
+					"pbi_datasets": {
+						"type": "array"
+					}
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-10-09T05:45:10Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AOLayoverDBToBlob')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@pipeline().parameters.cw_items",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copy data1",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "SqlServerSource",
+											"sqlReaderQuery": {
+												"value": "@{item().query} @{if(or(pipeline().parameters.is_first_load, empty(item().where_clause)), '', replace(replace(item().where_clause, 'PRUNE_DAYS', pipeline().parameters.prune_days), 'CURRENT_DATETIME', pipeline().parameters.queryTimestamp))}",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "ParquetSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											}
+										},
+										"enableStaging": false
+									},
+									"inputs": [
+										{
+											"referenceName": "AOLayoverSqlDb",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "LandingStorage",
+											"type": "DatasetReference",
+											"parameters": {
+												"filename": {
+													"value": "@concat(item().target_filename, '.parquet')",
+													"type": "Expression"
+												},
+												"folder": {
+													"value": "@concat(item().landing_folder, '/', item().target_filename)",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"cw_items": {
+						"type": "array"
+					},
+					"prune_days": {
+						"type": "string"
+					},
+					"queryTimestamp": {
+						"type": "string"
+					},
+					"is_first_load": {
+						"type": "bool"
+					}
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-10-09T05:45:10Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/AOLayoverSqlDb')]",
+				"[concat(variables('factoryId'), '/datasets/LandingStorage')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/iHRDBToBlob')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@pipeline().parameters.cw_items",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "iHRDBtoBlob",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "AzureSqlSource",
+											"sqlReaderQuery": {
+												"value": "@{item().query} @{if(or(pipeline().parameters.is_first_load, empty(item().where_clause)), '', replace(replace(item().where_clause, 'PRUNE_DAYS', pipeline().parameters.prune_days), 'CURRENT_DATETIME', pipeline().parameters.queryTimestamp))}",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "ParquetSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "ParquetWriteSettings"
+											}
+										},
+										"enableStaging": false
+									},
+									"inputs": [
+										{
+											"referenceName": "IHRDBSQLServerAzure",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "LandingStorage",
+											"type": "DatasetReference",
+											"parameters": {
+												"filename": {
+													"value": "@concat(item().target_filename, '.parquet')",
+													"type": "Expression"
+												},
+												"folder": {
+													"value": "@concat(item().landing_folder, '/', item().target_filename)",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"cw_items": {
+						"type": "array"
+					},
+					"prune_days": {
+						"type": "string"
+					},
+					"queryTimestamp": {
+						"type": "string"
+					},
+					"is_first_load": {
+						"type": "bool"
+					}
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"lastPublishTime": "2021-05-24T05:51:50Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/IHRDBSQLServerAzure')]",
+				"[concat(variables('factoryId'), '/datasets/LandingStorage')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ManhoursDBtoBlob')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@pipeline().parameters.cw_items",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "ManhourstoBlob",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "AzureSqlSource",
+											"sqlReaderQuery": {
+												"value": "@{item().query} @{if(or(pipeline().parameters.is_first_load, empty(item().where_clause)), '', replace(replace(item().where_clause, 'PRUNE_DAYS', pipeline().parameters.prune_days), 'CURRENT_DATETIME', pipeline().parameters.queryTimestamp))}",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "ParquetSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "ParquetWriteSettings"
+											}
+										},
+										"enableStaging": false
+									},
+									"inputs": [
+										{
+											"referenceName": "ManhoursSQLServerAzure",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "LandingStorage",
+											"type": "DatasetReference",
+											"parameters": {
+												"filename": {
+													"value": "@concat(item().target_filename, '.parquet')",
+													"type": "Expression"
+												},
+												"folder": {
+													"value": "@concat(item().landing_folder, '/', item().target_filename)",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"cw_items": {
+						"type": "array"
+					},
+					"prune_days": {
+						"type": "string"
+					},
+					"queryTimestamp": {
+						"type": "string"
+					},
+					"is_first_load": {
+						"type": "bool"
+					}
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"lastPublishTime": "2021-05-24T06:54:19Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ManhoursSQLServerAzure')]",
+				"[concat(variables('factoryId'), '/datasets/LandingStorage')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ODBtoBlob')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@pipeline().parameters.cw_items",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "ODBtoBlob",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "OracleSource",
+											"oracleReaderQuery": {
+												"value": "@{item().query} @{if(or(pipeline().parameters.is_first_load, empty(item().where_clause)), '', replace(replace(item().where_clause, 'PRUNE_DAYS', pipeline().parameters.prune_days), 'CURRENT_DATETIME', pipeline().parameters.queryTimestamp))}",
+												"type": "Expression"
+											},
+											"partitionOption": "None",
+											"queryTimeout": "02:00:00"
+										},
+										"sink": {
+											"type": "ParquetSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "ParquetWriteSettings"
+											}
+										},
+										"enableStaging": false
+									},
+									"inputs": [
+										{
+											"referenceName": "ODB",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "LandingStorage",
+											"type": "DatasetReference",
+											"parameters": {
+												"filename": {
+													"value": "@concat(item().target_filename, '.parquet')",
+													"type": "Expression"
+												},
+												"folder": {
+													"value": "@concat(item().landing_folder, '/', item().target_filename)",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"cw_items": {
+						"type": "array"
+					},
+					"prune_days": {
+						"type": "string"
+					},
+					"queryTimestamp": {
+						"type": "string"
+					},
+					"is_first_load": {
+						"type": "bool"
+					}
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"lastPublishTime": "2021-06-07T09:36:44Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ODB')]",
+				"[concat(variables('factoryId'), '/datasets/LandingStorage')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/TALSYStoBlob')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@pipeline().parameters.cw_items",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "TALSYStoBlob",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "OracleSource",
+											"oracleReaderQuery": {
+												"value": "@{item().query} @{if(or(pipeline().parameters.is_first_load, empty(item().where_clause)), '', replace(replace(item().where_clause, 'PRUNE_DAYS', pipeline().parameters.prune_days), 'CURRENT_DATETIME', pipeline().parameters.queryTimestamp))}",
+												"type": "Expression"
+											},
+											"partitionOption": "None",
+											"queryTimeout": "02:00:00"
+										},
+										"sink": {
+											"type": "ParquetSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											}
+										},
+										"enableStaging": false
+									},
+									"inputs": [
+										{
+											"referenceName": "TALSYS",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "LandingStorage",
+											"type": "DatasetReference",
+											"parameters": {
+												"filename": {
+													"value": "@concat(item().target_filename, '.parquet')",
+													"type": "Expression"
+												},
+												"folder": {
+													"value": "@concat(item().landing_folder, '/', item().target_filename)",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"cw_items": {
+						"type": "array"
+					},
+					"prune_days": {
+						"type": "string"
+					},
+					"queryTimestamp": {
+						"type": "string"
+					},
+					"is_first_load": {
+						"type": "bool"
+					}
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-10-09T05:45:10Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/TALSYS')]",
+				"[concat(variables('factoryId'), '/datasets/LandingStorage')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/TURNINtoBlob')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@pipeline().parameters.cw_items",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "TURNINtoBlob",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "OracleSource",
+											"oracleReaderQuery": {
+												"value": "@{item().query} @{if(or(pipeline().parameters.is_first_load, empty(item().where_clause)), '', replace(replace(item().where_clause, 'PRUNE_DAYS', pipeline().parameters.prune_days), 'CURRENT_DATETIME', pipeline().parameters.queryTimestamp))}",
+												"type": "Expression"
+											},
+											"partitionOption": "None",
+											"queryTimeout": "02:00:00"
+										},
+										"sink": {
+											"type": "ParquetSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "ParquetWriteSettings"
+											}
+										},
+										"enableStaging": false
+									},
+									"inputs": [
+										{
+											"referenceName": "TURNIN_DS",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "LandingStorage",
+											"type": "DatasetReference",
+											"parameters": {
+												"filename": {
+													"value": "@concat(item().target_filename, '.parquet')",
+													"type": "Expression"
+												},
+												"folder": {
+													"value": "@concat(item().landing_folder, '/', item().target_filename)",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"cw_items": {
+						"type": "array"
+					},
+					"prune_days": {
+						"type": "string"
+					},
+					"queryTimestamp": {
+						"type": "string"
+					},
+					"is_first_load": {
+						"type": "bool"
+					}
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"lastPublishTime": "2021-06-18T04:02:28Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/TURNIN_DS')]",
+				"[concat(variables('factoryId'), '/datasets/LandingStorage')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/TriggerGuzzleJobGroup')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "TriggerTime",
+						"type": "SetVariable",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "triggertime",
+							"value": {
+								"value": "@formatDateTime(pipeline().TriggerTime, 'yyyy-MM-dd HH:mm:ss')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "JobGroupsAPI",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "TriggerTime",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"url": {
+								"value": "https://guzzleprd-ltp.southeastasia.cloudapp.azure.com:9090/api/batches/run_job_group?mode=@{pipeline().parameters.mode}",
+								"type": "Expression"
+							},
+							"method": "POST",
+							"headers": {},
+							"body": {
+								"value": "{\"business_date\":\"@{variables('triggertime')}\",\"guzzle.spark.name\":\"@{pipeline().parameters.sparkEnvName}\",\"job_group\":\"@{pipeline().parameters.jobGroupName}\",\"environment\":\"@{pipeline().parameters.guzzleEnvName}\", \"queryTimestamp\": \"from_unixtime(unix_timestamp('@{pipeline().parameters.queryTimestamp}', 'yyyy-MM-dd HH:mm:ss'))\", \"load\": \"@{pipeline().parameters.load}\", \"prune_days\": \"@{pipeline().parameters.prune_days}\"}",
+								"type": "Expression"
+							},
+							"disableCertValidation": true,
+							"authentication": {
+								"type": "Basic",
+								"username": "admin",
+								"password": {
+									"type": "SecureString",
+									"value": "**********"
+								}
+							}
+						}
+					},
+					{
+						"name": "WaitForJobStart",
+						"type": "Until",
+						"dependsOn": [
+							{
+								"activity": "JobGroupsAPI",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@and(contains(activity('GetMaxInstanceId').output.firstRow, 'jobInstanceId'), not(equals(activity('GetMaxInstanceId').output.firstRow.jobInstanceId, null)))",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Wait5Seconds",
+									"type": "Wait",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"waitTimeInSeconds": 5
+									}
+								},
+								{
+									"name": "GetMaxInstanceID",
+									"type": "Lookup",
+									"dependsOn": [
+										{
+											"activity": "Wait5Seconds",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "AzureSqlSource",
+											"sqlReaderQuery": {
+												"value": "SELECT\n  CAST(MAX(job_instance_id) AS varchar) jobInstanceId\nFROM [dbo].[job_info]\nWHERE tag = 'job_group'\nAND business_date='@{variables('triggertime')}'",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"dataset": {
+											"referenceName": "JobInfo",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									}
+								}
+							],
+							"timeout": "00.00:01:00"
+						}
+					},
+					{
+						"name": "WaitForJobToComplete",
+						"type": "Until",
+						"dependsOn": [
+							{
+								"activity": "WaitForJobStart",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@and(contains(activity('GetStatus').output,\n'firstRow'),not(equals(activity('GetStatus').output.firstRow.status, 'RUNNING')))",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Wait15Seconds",
+									"type": "Wait",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"waitTimeInSeconds": 15
+									}
+								},
+								{
+									"name": "GetStatus",
+									"type": "Lookup",
+									"dependsOn": [
+										{
+											"activity": "Wait15Seconds",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "AzureSqlSource",
+											"sqlReaderQuery": {
+												"value": "SELECT\n  status\nFROM [dbo].[job_info]\nWHERE job_instance_id=@{activity('GetMaxInstanceID').output.firstRow.jobInstanceID}",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"dataset": {
+											"referenceName": "JobInfo",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									}
+								}
+							],
+							"timeout": "7.00:00:00"
+						}
+					},
+					{
+						"name": "LogResults",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "WaitForJobToComplete",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "LogResults",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"triggerTime": {
+									"value": "@pipeline().parameters.queryTimeStamp",
+									"type": "Expression"
+								},
+								"parentJobInstanceID": {
+									"value": "@activity('GetMaxInstanceID').output.firstRow.jobInstanceID",
+									"type": "Expression"
+								},
+								"p_jobgroup": {
+									"value": "@pipeline().parameters.jobGroupName",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "RaiseExceptionIfJobFailed",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "LogResults",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "If Condition1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "status",
+							"value": {
+								"value": "@if(not(equals(activity('GetStatus').output.firstRow.status, 'SUCCESS')), 1, 'SUCCESS')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "If Condition1",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "WaitForJobToComplete",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@not(equals(activity('GetStatus').output.firstRow.status, 'SUCCESS'))",
+								"type": "Expression"
+							},
+							"ifTrueActivities": [
+								{
+									"name": "GetFailedJobInfo",
+									"type": "Lookup",
+									"dependsOn": [
+										{
+											"activity": "WaitAMinute",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "AzureSqlSource",
+											"sqlReaderQuery": {
+												"value": "select job_instance_id, (select parameter_value from dbo.job_info_param where 1=1 and parameter_name='job_status_url' and job_info_param.job_instance_id=job_info.job_instance_id) job_databricks_url, (select concat('https://alpinestorageaprod.blob.core.windows.net/guzzlehome/logs/',parameter_value,'?sp=rl&st=2020-08-04T08:36:15Z&se=2500-12-31T08:36:00Z&sv=2019-12-12&sr=c&sig=inlHmDzhrSqMEwwYTmg1v16AWGe%2Bj03hgKTTx2j2BZ8%3D') from dbo.job_info_param where 1=1 and parameter_name='log_file' and job_info_param.job_instance_id=job_info.job_instance_id) job_log_file from dbo.job_info where 1=1 and parent_job_instance_id='@{activity('GetMaxInstanceID').output.firstRow.jobInstanceID}' and status in ('FAILED','ABORTED') and tag not in ('workunit', 'publish') order by job_info.job_instance_id desc",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"dataset": {
+											"referenceName": "JobInfo",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									}
+								},
+								{
+									"name": "SendFailureEmailNotification",
+									"type": "ExecutePipeline",
+									"dependsOn": [
+										{
+											"activity": "Set jobLogFile",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										},
+										{
+											"activity": "Set jobGroupLogFile",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "PBIRefreshAndEmail",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"email_to": {
+												"value": "@pipeline().parameters.email_to",
+												"type": "Expression"
+											},
+											"message": {
+												"value": "Error occurred while running Job Group <strong>@{pipeline().parameters.jobGroupName}</strong>. @{if(not(empty(variables('jobLogFile'))), concat('Click <a href=''', variables('jobLogFile'), '''>here</a> to download log file of failed job.'), '')}",
+												"type": "Expression"
+											},
+											"status": {
+												"value": "@activity('GetStatus').output.firstRow.status",
+												"type": "Expression"
+											},
+											"start_time": {
+												"value": "@pipeline().TriggerTime",
+												"type": "Expression"
+											},
+											"environment": "PROD",
+											"pbi_datasets": "[[]"
+										}
+									}
+								},
+								{
+									"name": "WaitAMinute",
+									"type": "Wait",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"waitTimeInSeconds": 60
+									}
+								},
+								{
+									"name": "GetFailedJobGroupInfo",
+									"type": "Lookup",
+									"dependsOn": [
+										{
+											"activity": "Set jobLogFile",
+											"dependencyConditions": [
+												"Failed"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "AzureSqlSource",
+											"sqlReaderQuery": {
+												"value": "select job_instance_id, (select concat('https://alpinestorageaprod.blob.core.windows.net/guzzlehome/logs/',parameter_value,'?sp=rl&st=2020-08-04T08:36:15Z&se=2500-12-31T08:36:00Z&sv=2019-12-12&sr=c&sig=inlHmDzhrSqMEwwYTmg1v16AWGe%2Bj03hgKTTx2j2BZ8%3D') from dbo.job_info_param where 1=1 and parameter_name='log_file' and job_info_param.job_instance_id='@{activity('GetMaxInstanceID').output.firstRow.jobInstanceID}') job_log_file from dbo.job_info where 1=1 and status in ('FAILED','ABORTED') and tag not in ('workunit', 'publish') order by job_info.job_instance_id desc",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"dataset": {
+											"referenceName": "JobInfo",
+											"type": "DatasetReference",
+											"parameters": {}
+										},
+										"firstRowOnly": true
+									}
+								},
+								{
+									"name": "Set jobLogFile",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "GetFailedJobInfo",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "jobLogFile",
+										"value": {
+											"value": "@activity('GetFailedJobInfo').output.firstRow['job_log_file']",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "Set jobGroupLogFile",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "GetFailedJobGroupInfo",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "jobLogFile",
+										"value": {
+											"value": "@activity('GetFailedJobGroupInfo').output.firstRow['job_log_file']",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"mode": {
+						"type": "string"
+					},
+					"sparkEnvName": {
+						"type": "string"
+					},
+					"jobGroupName": {
+						"type": "string"
+					},
+					"guzzleEnvName": {
+						"type": "string"
+					},
+					"queryTimeStamp": {
+						"type": "string"
+					},
+					"load": {
+						"type": "string"
+					},
+					"prune_days": {
+						"type": "string"
+					},
+					"email_to": {
+						"type": "string"
+					}
+				},
+				"variables": {
+					"triggertime": {
+						"type": "String"
+					},
+					"status": {
+						"type": "String"
+					},
+					"jobLogFile": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"lastPublishTime": "2021-06-09T11:40:49Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/LogResults')]",
+				"[concat(variables('factoryId'), '/datasets/JobInfo')]",
+				"[concat(variables('factoryId'), '/pipelines/PBIRefreshAndEmail')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LogResults')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "GetJobInfos",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "SELECT\n  job_instance_id,\n  name,\n  module,\n  start_time,\n  parent_job_instance_id,\n  status,\n  message\nFROM [dbo].[job_info]\nWHERE parent_job_instance_id=@{pipeline().parameters.parentJobInstanceID}",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "JobInfo",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "logResults",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "GetJobInfos",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Shared/Guzzle/Logs",
+							"baseParameters": {
+								"logs": {
+									"value": "{\n\"triggerTime\": \"@{pipeline().parameters.triggerTime}\",\n\"logs\": @{activity('GetJobInfos').output.value},\n\"jobgroup\": \"@{pipeline().parameters.p_jobgroup}\"\n}",
+									"type": "Expression"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureDatabricks1",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"triggerTime": {
+						"type": "string"
+					},
+					"parentJobInstanceID": {
+						"type": "string"
+					},
+					"p_jobgroup": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"lastPublishTime": "2021-06-09T11:40:48Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/JobInfo')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureDatabricks1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/TriggerGuzzleJob')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "TriggerGuzzleJob",
+						"type": "WebActivity",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"url": {
+								"value": "https://guzzleprd-ltp.southeastasia.cloudapp.azure.com:9090/api/execute/job",
+								"type": "Expression"
+							},
+							"method": "PUT",
+							"headers": {
+								"Content-Type": "application/json"
+							},
+							"body": {
+								"value": "{\n    \"name\": \"@{pipeline().parameters.job_name}\",\n     \"jobParameters\": {\n        \"business_date\": \"@{formatDateTime(pipeline().TriggerTime, 'yyyy-MM-dd HH:mm:ss')}\",\n        \"environment\": \"@{pipeline().parameters.environment}\",\n        \"queryTimestamp\": \"@{pipeline().parameters.queryTimestamp}\" ,\n        \"date_column\": \"@{pipeline().parameters.date_column}\",\n        \"prune_days\": \"@{pipeline().parameters.prune_days}\"\n}}",
+								"type": "Expression"
+							},
+							"authentication": {
+								"type": "Basic",
+								"username": "admin",
+								"password": {
+									"type": "SecureString",
+									"value": "**********"
+								}
+							}
+						}
+					},
+					{
+						"name": "WaitUntilCompleted",
+						"type": "Until",
+						"dependsOn": [
+							{
+								"activity": "TriggerGuzzleJob",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@and(contains(activity('GetStatus').output, 'firstRow'),\nnot(or(equals(activity('GetStatus').output.firstRow.status, 'PENDING'),\nequals(activity('GetStatus').output.firstRow.status, 'RUNNING'))))",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Wait15seconds",
+									"type": "Wait",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"waitTimeInSeconds": 15
+									}
+								},
+								{
+									"name": "GetStatus",
+									"type": "Lookup",
+									"dependsOn": [
+										{
+											"activity": "Wait15seconds",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "AzureSqlSource",
+											"sqlReaderQuery": {
+												"value": "SELECT\n  status\nFROM [dbo].[job_info]\nWHERE job_instance_id = @{activity('TriggerGuzzleJob').output.jobInstanceId}",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"dataset": {
+											"referenceName": "JobInfo",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									}
+								}
+							],
+							"timeout": "7.00:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"job_name": {
+						"type": "string"
+					},
+					"queryTimestamp": {
+						"type": "string"
+					},
+					"environment": {
+						"type": "string"
+					},
+					"date_column": {
+						"type": "string"
+					},
+					"prune_days": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "ALPINE"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-10-09T05:45:10Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/JobInfo')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlDatabase2')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": "[parameters('AzureSqlDatabase2_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlsource1')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase2",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "metatable"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase2')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlDatabase3')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": "[parameters('AzureSqlDatabase3_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlTable1')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase3",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"tablename": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": {
+						"value": "@dataset().tablename",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase3')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ADLSGen2Destination')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('ADLSGen2Destination_properties_typeProperties_url')]",
+					"accountKey": {
+						"type": "SecureString",
+						"value": "[parameters('ADLSGen2Destination_accountKey')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Parquet1')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ADLSGen2Destination",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileSystem": "containerdemo"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ADLSGen2Destination')]"
+			]
+		}
+	]
+}

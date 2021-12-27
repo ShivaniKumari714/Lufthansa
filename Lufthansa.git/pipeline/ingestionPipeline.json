@@ -440,6 +440,7 @@
 			"name": "ALPINE"
 		},
 		"annotations": [],
-		"lastPublishTime": "2021-06-18T06:30:50Z"
-	}
+		"lastPublishTime": "2021-12-23T12:34:47Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
 }

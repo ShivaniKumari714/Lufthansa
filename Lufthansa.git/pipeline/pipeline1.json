@@ -3,7 +3,7 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "Copy blob to adx",
+				"name": "Copy csv from blob to adx",
 				"type": "Copy",
 				"dependsOn": [],
 				"policy": {

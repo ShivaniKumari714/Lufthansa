@@ -1,0 +1,29 @@
+{
+	"name": "blob_csv_demo_data",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "blobdataset_csv",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": "demo02.csv",
+				"fileSystem": "demo"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"quoteChar": "\""
+		},
+		"schema": [
+			{
+				"type": "String"
+			},
+			{
+				"type": "String"
+			}
+		]
+	}
+}

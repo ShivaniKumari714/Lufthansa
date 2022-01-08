@@ -16,19 +16,22 @@
 				"userProperties": [],
 				"typeProperties": {
 					"source": {
-						"type": "JsonSource",
+						"type": "DelimitedTextSource",
 						"storeSettings": {
 							"type": "AzureBlobFSReadSettings",
 							"recursive": true,
-							"enablePartitionDiscovery": true
+							"enablePartitionDiscovery": false
 						},
 						"formatSettings": {
-							"type": "JsonReadSettings"
+							"type": "DelimitedTextReadSettings"
 						}
 					},
 					"sink": {
 						"type": "AzureDataExplorerSink",
-						"ingestionMappingName": "imu_mapping"
+						"ingestionMappingName": {
+							"value": "demo_mapping",
+							"type": "Expression"
+						}
 					},
 					"enableStaging": false,
 					"translator": {
@@ -187,12 +190,17 @@
 									"type": "String"
 								}
 							}
-						]
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
 					}
 				},
 				"inputs": [
 					{
-						"referenceName": "blob_imu_Json",
+						"referenceName": "blob_csv_demo_data",
 						"type": "DatasetReference"
 					}
 				],

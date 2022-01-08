@@ -10,8 +10,8 @@
 		"typeProperties": {
 			"location": {
 				"type": "AzureBlobFSLocation",
-				"fileName": "imu.json",
-				"fileSystem": "imu"
+				"fileName": "demo02.csv",
+				"fileSystem": "demo"
 			}
 		},
 		"schema": {

@@ -1,0 +1,209 @@
+{
+	"name": "pipeline1",
+	"properties": {
+		"activities": [
+			{
+				"name": "Copy blob to adx",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "JsonSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": true
+						},
+						"formatSettings": {
+							"type": "JsonReadSettings"
+						}
+					},
+					"sink": {
+						"type": "AzureDataExplorerSink",
+						"ingestionMappingName": "imu_mapping"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"path": "$['master_packet_timestamp']"
+								},
+								"sink": {
+									"name": "master_packet_timestamp",
+									"type": "Int64"
+								}
+							},
+							{
+								"source": {
+									"path": "$['master_schema_version']"
+								},
+								"sink": {
+									"name": "master_schema_version",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "$['packet_id']"
+								},
+								"sink": {
+									"name": "packet_id",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"path": "$['scooter_id']"
+								},
+								"sink": {
+									"name": "scooter_id",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "$['vehicle_identification_number']"
+								},
+								"sink": {
+									"name": "vehicle_identification_number",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "$['scooter_state']"
+								},
+								"sink": {
+									"name": "scooter_state",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "$['timestamp']"
+								},
+								"sink": {
+									"name": "timestamp",
+									"type": "Int64"
+								}
+							},
+							{
+								"source": {
+									"path": "$['schema_version']"
+								},
+								"sink": {
+									"name": "schema_version",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "$['ax']"
+								},
+								"sink": {
+									"name": "ax",
+									"type": "Double"
+								}
+							},
+							{
+								"source": {
+									"path": "$['ay']"
+								},
+								"sink": {
+									"name": "ay",
+									"type": "Double"
+								}
+							},
+							{
+								"source": {
+									"path": "$['az']"
+								},
+								"sink": {
+									"name": "az",
+									"type": "Double"
+								}
+							},
+							{
+								"source": {
+									"path": "$['gx']"
+								},
+								"sink": {
+									"name": "gx",
+									"type": "Double"
+								}
+							},
+							{
+								"source": {
+									"path": "$['gy']"
+								},
+								"sink": {
+									"name": "gy",
+									"type": "Double"
+								}
+							},
+							{
+								"source": {
+									"path": "$['gz']"
+								},
+								"sink": {
+									"name": "gz",
+									"type": "Double"
+								}
+							},
+							{
+								"source": {
+									"path": "$['mx']"
+								},
+								"sink": {
+									"name": "mx",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "$['my']"
+								},
+								"sink": {
+									"name": "my",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "$['mz']"
+								},
+								"sink": {
+									"name": "mz",
+									"type": "String"
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "blob_imu_Json",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "adx_imu_table",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"annotations": []
+	}
+}

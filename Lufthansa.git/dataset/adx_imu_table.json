@@ -78,7 +78,7 @@
 			}
 		],
 		"typeProperties": {
-			"table": "demo"
+			"table": "imudemo"
 		}
 	}
 }

@@ -1,0 +1,74 @@
+{
+	"name": "Json1",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureDataLakeStorage2",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": "imu.json",
+				"fileSystem": "imu"
+			}
+		},
+		"schema": {
+			"type": "object",
+			"properties": {
+				"master_packet_timestamp": {
+					"type": "integer"
+				},
+				"master_schema_version": {
+					"type": "string"
+				},
+				"packet_id": {
+					"type": "integer"
+				},
+				"scooter_id": {
+					"type": "string"
+				},
+				"vehicle_identification_number": {
+					"type": "string"
+				},
+				"scooter_state": {
+					"type": "string"
+				},
+				"timestamp": {
+					"type": "integer"
+				},
+				"schema_version": {
+					"type": "string"
+				},
+				"ax": {
+					"type": "number"
+				},
+				"ay": {
+					"type": "number"
+				},
+				"az": {
+					"type": "number"
+				},
+				"gx": {
+					"type": "number"
+				},
+				"gy": {
+					"type": "number"
+				},
+				"gz": {
+					"type": "number"
+				},
+				"mx": {
+					"type": "null"
+				},
+				"my": {
+					"type": "null"
+				},
+				"mz": {
+					"type": "null"
+				}
+			}
+		}
+	}
+}

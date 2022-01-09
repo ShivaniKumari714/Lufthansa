@@ -28,13 +28,13 @@
 					},
 					"sink": {
 						"type": "AzureDataExplorerSink",
-						"ingestionMappingName": "imudemo_mapping"
+						"ingestionMappingName": ""
 					},
 					"enableStaging": false
 				},
 				"inputs": [
 					{
-						"referenceName": "imu_json",
+						"referenceName": "Json1",
 						"type": "DatasetReference"
 					}
 				],

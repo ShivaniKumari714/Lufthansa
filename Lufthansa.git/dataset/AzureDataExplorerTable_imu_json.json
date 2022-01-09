@@ -1,0 +1,84 @@
+{
+	"name": "AzureDataExplorerTable_imu_json",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureDataExplorer_json",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureDataExplorerTable",
+		"schema": [
+			{
+				"name": "master_packet_timestamp",
+				"type": "long"
+			},
+			{
+				"name": "master_schema_version",
+				"type": "string"
+			},
+			{
+				"name": "packet_id",
+				"type": "int"
+			},
+			{
+				"name": "scooter_id",
+				"type": "string"
+			},
+			{
+				"name": "vehicle_identification_number",
+				"type": "string"
+			},
+			{
+				"name": "scooter_state",
+				"type": "string"
+			},
+			{
+				"name": "timestamp",
+				"type": "long"
+			},
+			{
+				"name": "schema_version",
+				"type": "string"
+			},
+			{
+				"name": "ax",
+				"type": "real"
+			},
+			{
+				"name": "ay",
+				"type": "real"
+			},
+			{
+				"name": "az",
+				"type": "real"
+			},
+			{
+				"name": "gx",
+				"type": "real"
+			},
+			{
+				"name": "gy",
+				"type": "real"
+			},
+			{
+				"name": "gz",
+				"type": "real"
+			},
+			{
+				"name": "mx",
+				"type": "string"
+			},
+			{
+				"name": "my",
+				"type": "string"
+			},
+			{
+				"name": "mz",
+				"type": "string"
+			}
+		],
+		"typeProperties": {
+			"table": "imudemo"
+		}
+	}
+}
